@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	"github.com/jmcvetta/neoism"
@@ -37,7 +38,7 @@ func runServer(neoURL string, port int) {
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
 		"Checks for accessing neo4j", setUpHealthCheck()))
-	http.ListenAndServe(":19080", r)
+	http.ListenAndServe(":19080", handlers.CombinedLoggingHandler(os.Stdout, r))
 }
 
 func setUpHealthCheck() v1a.Check {
