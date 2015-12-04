@@ -26,7 +26,7 @@ class people_rw_neo4j {
       require => File[$install_dir];
 
     $config_file:
-      content => template("$module_name/config.json.erb"),
+      content => template("$module_name/config.parameters.erb"),
       mode    => "0664";
 
     $log_dir:
