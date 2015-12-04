@@ -5,16 +5,30 @@ import (
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/gorilla/mux"
+	"github.com/jawher/mow.cli"
 	"github.com/jmcvetta/neoism"
 	"io"
 	"net/http"
+	"os"
 )
 
 var db *neoism.Database
 
 func main() {
+	app := cli.App("people-rw-neo4j", "A RESTful API for managing People in neo4j")
+	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
+	port := app.IntOpt("port", 8080, "Port to listen on")
+
+	app.Action = func() {
+		runServer(*neoURL, *port)
+	}
+
+	app.Run(os.Args)
+}
+
+func runServer(neoURL string, port int) {
 	var err error
-	db, err = neoism.Connect("http://localhost:7474/db/data")
+	db, err = neoism.Connect(neoURL)
 	if err != nil {
 		panic(err)
 	}
@@ -33,8 +47,12 @@ func setUpHealthCheck() v1a.Check {
 		PanicGuide:       "Don't panic",
 		Severity:         1,
 		TechnicalSummary: "Something technical",
-		Checker:          func() (string, error) { return "", nil }, //TODO: create the real check
+		Checker:          checker,
 	}
+}
+
+func checker() (string, error) {
+	return "", nil
 }
 
 func peopleWrite(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +68,7 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 
 	peopleCypherWriter.Write(p)
 
-	io.WriteString(w, fmt.Sprintf("Hello %s!", uuid))
+	io.WriteString(w, fmt.Sprintf("Hello %s!", uuid)) //TODO remove
 }
 
 func parsePerson(jsonInput io.Reader) (person, error) {
@@ -87,7 +105,7 @@ func NewPeopleCypherWriter() PeopleCypherWriter {
 }
 
 func (pcw *PeopleCypherWriter) Write(p person) {
-	fmt.Println("writing cypher")
+	fmt.Println("writing cypher") //TODO remove
 
 	result := []struct {
 		N neoism.Node
