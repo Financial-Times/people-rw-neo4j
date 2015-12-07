@@ -16,6 +16,7 @@ import (
 var db *neoism.Database
 
 func main() {
+	fmt.Println(os.Args)
 	app := cli.App("people-rw-neo4j", "A RESTful API for managing People in neo4j")
 	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
 	port := app.IntOpt("port", 8080, "Port to listen on")
