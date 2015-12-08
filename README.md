@@ -4,10 +4,14 @@ __An API for reading/writing people into Neo4j. Expects the people json supplied
 
 ## Installation
 
-For the first time: `go get github.com/Financial-Times/nativerw` or update: `go get -u github.com/Financial-Times/nativerw`
-	
-`go install github.com/Financial-Times/people-rw-neo4j`
+For the first time: 
 
+`go get github.com/Financial-Times/people-rw-neo4j` 
+
+or update: 
+
+`go get -u github.com/Financial-Times/people-rw-neo4j`
+	
 ## Running
 
 `$GOPATH/bin/people-rw-neo4j --neo-url={neo4jUrl} --port={port}
