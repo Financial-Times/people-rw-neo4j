@@ -19,7 +19,7 @@ func main() {
 	fmt.Println(os.Args)
 	app := cli.App("people-rw-neo4j", "A RESTful API for managing People in neo4j")
 	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
-	port := app.IntOpt("port", 8080, "Port to listen on")
+	port := app.StringOpt("port", "8080", "Port to listen on")
 
 	app.Action = func() {
 		runServer(*neoURL, *port)
@@ -28,7 +28,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func runServer(neoURL string, port int) {
+func runServer(neoURL string, port string) {
 	var err error
 	db, err = neoism.Connect(neoURL)
 	if err != nil {
@@ -39,7 +39,7 @@ func runServer(neoURL string, port int) {
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
 		"Checks for accessing neo4j", setUpHealthCheck()))
-	http.ListenAndServe(":19080", handlers.CombinedLoggingHandler(os.Stdout, r))
+	http.ListenAndServe(":"+port, handlers.CombinedLoggingHandler(os.Stdout, r))
 }
 
 func setUpHealthCheck() v1a.Check {
