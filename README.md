@@ -6,7 +6,7 @@ __An API for reading/writing people into Neo4j. Expects the people json supplied
 
 For the first time: `go get github.com/Financial-Times/nativerw` or update: `go get -u github.com/Financial-Times/nativerw`
 	
-`go install github.com/Financial-Times/nativerw`
+`go install github.com/Financial-Times/people-rw-neo4j`
 
 ## Running
 
