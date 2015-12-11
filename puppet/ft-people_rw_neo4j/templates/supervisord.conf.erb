@@ -21,7 +21,7 @@ supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 serverurl=unix:///var/run/supervisor.sock ; use a unix:// URL  for a unix socket
 
 [program:<%=@binary_name%>]
-command=<%=@binary_file%> <%=@config_file%>
+command=<%=@binary_file%> <%=scope.function_hiera(['configParameters', '{}'])%>
 autorestart=true
 startsecs=20
 stdout_logfile=<%=@log_dir%>/<%=@binary_name%>-go-app.log
