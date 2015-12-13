@@ -39,6 +39,7 @@ func runServer(neoURL string, port string) {
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
 		"Checks for accessing neo4j", setUpHealthCheck()))
+	r.HandleFunc("/ping", ping)
 	http.ListenAndServe(":"+port, handlers.CombinedLoggingHandler(os.Stdout, r))
 }
 
@@ -57,6 +58,10 @@ func checker() (string, error) {
 	return "", nil
 }
 
+func ping(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "pong")
+}
+
 func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["uuid"]
@@ -69,8 +74,6 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	peopleCypherWriter := NewPeopleCypherWriter()
 
 	peopleCypherWriter.Write(p)
-
-	io.WriteString(w, fmt.Sprintf("Hello %s!", uuid)) //TODO remove
 }
 
 func parsePerson(jsonInput io.Reader) (person, error) {
@@ -78,12 +81,6 @@ func parsePerson(jsonInput io.Reader) (person, error) {
 	var p person
 	err := dec.Decode(&p)
 	return p, err
-}
-
-func writeCypher(p person, peopleWriter PeopleCypherWriter) error {
-	fmt.Println(p.UUID)
-	//peopleWriter.write()
-	return nil
 }
 
 type person struct {
@@ -107,8 +104,6 @@ func NewPeopleCypherWriter() PeopleCypherWriter {
 }
 
 func (pcw *PeopleCypherWriter) Write(p person) {
-	fmt.Println("writing cypher") //TODO remove
-
 	result := []struct {
 		N neoism.Node
 	}{}
