@@ -4,19 +4,19 @@ import (
 	"github.com/jmcvetta/neoism"
 )
 
-type PeopleWriter interface {
+type PeopleDriver interface {
 	Write(p person)
 }
 
-type PeopleCypherWriter struct {
+type PeopleCypherDriver struct {
 	db *neoism.Database
 }
 
-func NewPeopleCypherWriter(db *neoism.Database) PeopleCypherWriter {
-	return PeopleCypherWriter{db}
+func NewPeopleCypherDriver(db *neoism.Database) PeopleCypherDriver {
+	return PeopleCypherDriver{db}
 }
 
-func (pcw PeopleCypherWriter) Write(p person) {
+func (pcw PeopleCypherDriver) Write(p person) {
 	result := []struct {
 		N neoism.Node
 	}{}

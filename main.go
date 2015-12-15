@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-var peopleCypherWriter PeopleWriter
+var peopleDriver PeopleDriver
 
 func main() {
 	fmt.Println(os.Args)
@@ -34,7 +34,7 @@ func runServer(neoURL string, port string) {
 		panic(err)
 	}
 
-	peopleCypherWriter = NewPeopleCypherWriter(db)
+	peopleDriver = NewPeopleCypherDriver(db)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
@@ -72,7 +72,7 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peopleCypherWriter.Write(p)
+	peopleDriver.Write(p)
 }
 
 func parsePerson(jsonInput io.Reader) (person, error) {
