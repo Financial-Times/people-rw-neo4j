@@ -16,7 +16,7 @@ or update:
 
 `$GOPATH/bin/people-rw-neo4j --neo-url={neo4jUrl} --port={port}
 
-Both arguments are optional, they default to a local Neo4j install and port 8080.
+Both arguments are optional, they default to a local Neo4j install on the default port (7474) and port 8080.
 
 ## Try it!
 

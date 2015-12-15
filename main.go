@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-var db *neoism.Database
+var peopleCypherWriter PeopleWriter
 
 func main() {
 	fmt.Println(os.Args)
@@ -29,11 +29,12 @@ func main() {
 }
 
 func runServer(neoURL string, port string) {
-	var err error
-	db, err = neoism.Connect(neoURL)
+	db, err := neoism.Connect(neoURL)
 	if err != nil {
 		panic(err)
 	}
+
+	peopleCypherWriter = NewPeopleCypherWriter(db)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
@@ -66,12 +67,10 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["uuid"]
 	p, err := parsePerson(r.Body)
-	if err != nil {
+	if err != nil || p.UUID != uuid {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	peopleCypherWriter := NewPeopleCypherWriter()
 
 	peopleCypherWriter.Write(p)
 }
@@ -90,50 +89,4 @@ type person struct {
 	} `json:"identifiers"`
 	Name string `json:"name"`
 	UUID string `json:"uuid"`
-}
-
-type PeopleWriter interface {
-	Write(p person)
-}
-
-type PeopleCypherWriter struct {
-}
-
-func NewPeopleCypherWriter() PeopleCypherWriter {
-	return PeopleCypherWriter{}
-}
-
-func (pcw *PeopleCypherWriter) Write(p person) {
-	result := []struct {
-		N neoism.Node
-	}{}
-
-	params := map[string]interface{}{
-		"name": p.Name,
-		"uuid": p.UUID,
-	}
-
-	for _, identifier := range p.Identifiers {
-		if identifier.Authority == "http://api.ft.com/system/FACTSET-PPL" {
-			params["factsetIdentifier"] = identifier.IdentifierValue
-		}
-	}
-
-	query := &neoism.CypherQuery{
-		Statement: `MERGE (n:Person {uuid: {uuid}}) 
-					set n={allprops}
-					return  n`,
-		Parameters: map[string]interface{}{
-			"uuid":     p.UUID,
-			"allprops": params,
-		},
-		Result: result,
-	}
-
-	err := db.Cypher(query)
-
-	if err != nil {
-		panic(err)
-	}
-
 }
