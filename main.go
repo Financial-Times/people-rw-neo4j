@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/gorilla/handlers"
@@ -39,12 +40,39 @@ func runServer(neoURL string, port string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
-		"Checks for accessing neo4j", setUpHealthCheck()))
+		"Checks for accessing neo4j", setUpHealthCheck(db)))
 	r.HandleFunc("/ping", ping)
 	http.ListenAndServe(":"+port, handlers.CombinedLoggingHandler(os.Stdout, r))
 }
 
-func setUpHealthCheck() v1a.Check {
+func setUpHealthCheck(db *neoism.Database) v1a.Check {
+
+	checker := func() (string, error) {
+		var result []struct {
+			UUID string `json:"uuid"`
+		}
+
+		query := &neoism.CypherQuery{
+			Statement: `MATCH (n:Person) 
+					return  n.uuid as uuid
+					limit 1`,
+			Result: &result,
+		}
+
+		err := db.Cypher(query)
+
+		if err != nil {
+			return "", err
+		}
+		if len(result) == 0 {
+			return "", errors.New("UUID not set")
+		}
+		if result[0].UUID == "" {
+			return "", errors.New("UUID not set")
+		}
+		return fmt.Sprintf("Found a person with a valid uuid = %v", result[0].UUID), nil
+	}
+
 	return v1a.Check{
 		BusinessImpact:   "blah",
 		Name:             "My check",
@@ -53,10 +81,6 @@ func setUpHealthCheck() v1a.Check {
 		TechnicalSummary: "Something technical",
 		Checker:          checker,
 	}
-}
-
-func checker() (string, error) {
-	return "", nil
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
