@@ -59,6 +59,7 @@ func runServer(neoURL string, port string) {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
+	r.HandleFunc("/people/{uuid}", peopleRead).Methods("GET")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
 		"Checks for accessing neo4j", setUpHealthCheck(db)))
 	r.HandleFunc("/ping", ping)
@@ -121,6 +122,33 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
+}
+
+func peopleRead(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uuid := vars["uuid"]
+
+	p, found, err := peopleDriver.Read(uuid)
+
+	w.Header().Add("Content-Type", "application/json")
+
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	if !found {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	enc := json.NewEncoder(w)
+
+	if err := enc.Encode(p); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
 }
 
 func parsePerson(jsonInput io.Reader) (person, error) {

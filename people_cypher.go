@@ -5,7 +5,7 @@ import (
 )
 
 type CypherRunner interface {
-	Cypher() error
+	CypherBatch(queries []*neoism.CypherQuery) error
 }
 
 type PeopleDriver interface {
@@ -14,11 +14,11 @@ type PeopleDriver interface {
 }
 
 type PeopleCypherDriver struct {
-	db *neoism.Database
+	cypherRunner CypherRunner
 }
 
-func NewPeopleCypherDriver(db *neoism.Database) PeopleCypherDriver {
-	return PeopleCypherDriver{db}
+func NewPeopleCypherDriver(cypherRunner CypherRunner) PeopleCypherDriver {
+	return PeopleCypherDriver{cypherRunner}
 }
 
 func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
@@ -36,7 +36,7 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 		Result: &results,
 	}
 
-	err := pcd.db.CypherBatch([]*neoism.CypherQuery{query})
+	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
 	if err != nil {
 		return person{}, false, err
@@ -84,7 +84,7 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 		},
 	}
 
-	return pcd.db.CypherBatch([]*neoism.CypherQuery{query})
+	return pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
 }
 
