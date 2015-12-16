@@ -55,7 +55,7 @@ func runServer(neoURL string, port string) {
 		db.CreateIndex("Person", "uuid")
 	}
 
-	peopleDriver = NewPeopleCypherDriver(db)
+	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, 1024))
 
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")

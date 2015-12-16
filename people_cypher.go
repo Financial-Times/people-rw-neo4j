@@ -8,6 +8,39 @@ type CypherRunner interface {
 	CypherBatch(queries []*neoism.CypherQuery) error
 }
 
+func NewBatchCypherRunner(cypherRunner CypherRunner, count int) CypherRunner {
+	cr := BatchCypherRunner{cypherRunner, make(chan cypherBatch), count}
+
+	go cr.batcher()
+
+	return &cr
+}
+
+type BatchCypherRunner struct {
+	cr    CypherRunner
+	ch    chan cypherBatch
+	count int
+}
+
+func (bcr *BatchCypherRunner) CypherBatch(queries []*neoism.CypherQuery) error {
+
+	errCh := make(chan error)
+	bcr.ch <- cypherBatch{queries, errCh}
+	return <-errCh
+}
+
+type cypherBatch struct {
+	queries []*neoism.CypherQuery
+	err     chan error
+}
+
+func (bcr *BatchCypherRunner) batcher() {
+	for {
+		batch := <-bcr.ch
+		batch.err <- bcr.cr.CypherBatch(batch.queries)
+	}
+}
+
 type PeopleDriver interface {
 	Write(p person) error
 	Read(uuid string) (p person, found bool, err error)
