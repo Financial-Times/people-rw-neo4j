@@ -1,10 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/jmcvetta/neoism"
-	"log"
 )
+
+type CypherRunner interface {
+	Cypher() error
+}
 
 type PeopleDriver interface {
 	Write(p person) error
@@ -34,13 +36,11 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 		Result: &results,
 	}
 
-	err := pcd.db.Cypher(query)
+	err := pcd.db.CypherBatch([]*neoism.CypherQuery{query})
 
 	if err != nil {
 		return person{}, false, err
 	}
-	j, _ := json.MarshalIndent(results, "  ", "  ")
-	log.Printf("Result is %v", string(j))
 
 	if len(results) == 0 {
 		return person{}, false, nil
@@ -84,7 +84,7 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 		},
 	}
 
-	return pcd.db.Cypher(query)
+	return pcd.db.CypherBatch([]*neoism.CypherQuery{query})
 
 }
 
