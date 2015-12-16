@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/jmcvetta/neoism"
+	"log"
 )
 
 type CypherRunner interface {
@@ -25,6 +26,7 @@ type BatchCypherRunner struct {
 func (bcr *BatchCypherRunner) CypherBatch(queries []*neoism.CypherQuery) error {
 
 	errCh := make(chan error)
+	log.Printf("Sending cypherBatch")
 	bcr.ch <- cypherBatch{queries, errCh}
 	return <-errCh
 }
@@ -35,9 +37,28 @@ type cypherBatch struct {
 }
 
 func (bcr *BatchCypherRunner) batcher() {
+	var currentQueries []*neoism.CypherQuery
+	var currentErrorChannels []chan error
 	for {
-		batch := <-bcr.ch
-		batch.err <- bcr.cr.CypherBatch(batch.queries)
+
+		cb := <-bcr.ch
+		for _, query := range cb.queries {
+			currentQueries = append(currentQueries, query)
+		}
+		currentErrorChannels = append(currentErrorChannels, cb.err)
+
+		if len(currentQueries) > bcr.count {
+			err := bcr.cr.CypherBatch(currentQueries)
+			notify(currentErrorChannels, err)
+			currentQueries = currentQueries[0:0] // clears the slice
+			currentErrorChannels = currentErrorChannels[0:0]
+		}
+	}
+}
+
+func notify(currentErrorChannels []chan error, err error) {
+	for _, cec := range currentErrorChannels {
+		cec <- err
 	}
 }
 
