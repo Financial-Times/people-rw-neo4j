@@ -10,6 +10,7 @@ import (
 	"github.com/jawher/mow.cli"
 	"github.com/jmcvetta/neoism"
 	"io"
+	"log"
 	"net/http"
 	"os"
 )
@@ -33,6 +34,25 @@ func runServer(neoURL string, port string) {
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
 		panic(err)
+	}
+
+	personIndexes, err := db.Indexes("Person")
+
+	if err != nil {
+		panic(err)
+	}
+
+	var indexFound bool
+
+	for _, index := range personIndexes {
+		if len(index.PropertyKeys) == 1 && index.PropertyKeys[0] == "uuid" {
+			indexFound = true
+			break
+		}
+	}
+	if !indexFound {
+		log.Printf("Creating index for person for neo4j instance at %s", neoURL)
+		db.CreateIndex("Person", "uuid")
 	}
 
 	peopleDriver = NewPeopleCypherDriver(db)
@@ -96,7 +116,11 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peopleDriver.Write(p)
+	err = peopleDriver.Write(p)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 }
 
 func parsePerson(jsonInput io.Reader) (person, error) {
@@ -107,10 +131,12 @@ func parsePerson(jsonInput io.Reader) (person, error) {
 }
 
 type person struct {
-	Identifiers []struct {
-		Authority       string `json:"authority"`
-		IdentifierValue string `json:"identifierValue"`
-	} `json:"identifiers"`
-	Name string `json:"name"`
-	UUID string `json:"uuid"`
+	Identifiers []identifier `json:"identifiers"`
+	Name        string       `json:"name"`
+	UUID        string       `json:"uuid"`
+}
+
+type identifier struct {
+	Authority       string `json:"authority"`
+	IdentifierValue string `json:"identifierValue"`
 }
