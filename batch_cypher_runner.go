@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/jmcvetta/neoism"
+	"log"
 	"time"
 )
 
@@ -57,6 +58,9 @@ func (bcr *BatchCypherRunner) batcher() {
 			//do nothing
 		}
 		err := bcr.cr.CypherBatch(currentQueries)
+		if err != nil {
+			log.Printf("Got error running batch, error=%v", err)
+		}
 		for _, cec := range currentErrorChannels {
 			cec <- err
 		}
