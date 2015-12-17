@@ -87,6 +87,7 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func peopleRead(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +116,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 
 }
 
