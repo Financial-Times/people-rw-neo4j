@@ -27,3 +27,5 @@ Both arguments are optional, they default to a local Neo4j install on the defaul
 Healthchecks: [http://localhost:8080/__health](http://localhost:8080/__health)
 
 Good-to-go: [http://localhost:8080/__gtg](http://localhost:8080/__gtg)
+
+Ping: [http://localhost:8080/ping](http://localhost:8080/ping)
