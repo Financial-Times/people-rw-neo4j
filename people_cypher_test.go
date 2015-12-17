@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestCreate(t *testing.T) {
+func _TestCreate(t *testing.T) {
 	assert := assert.New(t)
 	person := person{UUID: "123", Name: "Test", Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
 
