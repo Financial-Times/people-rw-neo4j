@@ -115,12 +115,14 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	uuid := vars["uuid"]
 	p, err := parsePerson(r.Body)
 	if err != nil || p.UUID != uuid {
+		log.Printf("Error on parse=%v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = peopleDriver.Write(p)
 	if err != nil {
+		log.Printf("Error on write=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -135,6 +137,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
 	if err != nil {
+		log.Printf("Error on read=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -147,6 +150,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 
 	if err := enc.Encode(p); err != nil {
+		log.Printf("Error on json encoding=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
