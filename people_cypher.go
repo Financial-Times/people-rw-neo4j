@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/jmcvetta/neoism"
 	"log"
+	"time"
 )
 
 type CypherRunner interface {
@@ -39,27 +40,40 @@ type cypherBatch struct {
 func (bcr *BatchCypherRunner) batcher() {
 	var currentQueries []*neoism.CypherQuery
 	var currentErrorChannels []chan error
+	var timeCh <-chan time.Time
 	for {
+		select {
+		case cb := <-bcr.ch:
+			log.Println("Got request")
+			timeCh = time.NewTimer(time.Second * 2).C
 
-		cb := <-bcr.ch
-		for _, query := range cb.queries {
-			currentQueries = append(currentQueries, query)
-		}
-		currentErrorChannels = append(currentErrorChannels, cb.err)
+			for _, query := range cb.queries {
+				currentQueries = append(currentQueries, query)
+			}
+			currentErrorChannels = append(currentErrorChannels, cb.err)
 
-		if len(currentQueries) > bcr.count {
-			err := bcr.cr.CypherBatch(currentQueries)
-			notify(currentErrorChannels, err)
-			currentQueries = currentQueries[0:0] // clears the slice
-			currentErrorChannels = currentErrorChannels[0:0]
+			if len(currentQueries) > bcr.count {
+				bcr.runBatch(&currentQueries, &currentErrorChannels)
+				timeCh = nil
+			}
+		case timeout := <-timeCh:
+			log.Printf("Got timeout %v", timeout)
+			if len(currentQueries) > 0 {
+				bcr.runBatch(&currentQueries, &currentErrorChannels)
+			}
 		}
+
 	}
 }
 
-func notify(currentErrorChannels []chan error, err error) {
-	for _, cec := range currentErrorChannels {
+func (bcr *BatchCypherRunner) runBatch(currentQueries *[]*neoism.CypherQuery, currentErrorChannels *[]chan error) {
+	log.Printf("Running batch for queries %v", *currentQueries)
+	err := bcr.cr.CypherBatch(*currentQueries)
+	for _, cec := range *currentErrorChannels {
 		cec <- err
 	}
+	*currentQueries = (*currentQueries)[0:0] // clears the slice
+	*currentErrorChannels = (*currentErrorChannels)[0:0]
 }
 
 type PeopleDriver interface {
