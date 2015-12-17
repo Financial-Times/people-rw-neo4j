@@ -1,0 +1,4 @@
+TODO
+- Occasional error: "http: multiple response.WriteHeader calls"
+- Log format, and logging at e.g. INFO vs WARN vs ERROR
+- Lots of failures when running batches but no logs visible as a result of log calls in the app
