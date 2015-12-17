@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/jmcvetta/neoism"
-	"log"
 	"time"
 )
 
@@ -28,7 +27,6 @@ type BatchCypherRunner struct {
 func (bcr *BatchCypherRunner) CypherBatch(queries []*neoism.CypherQuery) error {
 
 	errCh := make(chan error)
-	log.Printf("Sending cypherBatch")
 	bcr.ch <- cypherBatch{queries, errCh}
 	return <-errCh
 }
@@ -45,7 +43,6 @@ func (bcr *BatchCypherRunner) batcher() {
 	for {
 		select {
 		case cb := <-bcr.ch:
-			log.Println("Got request")
 			timeCh = time.NewTimer(bcr.duration).C
 
 			for _, query := range cb.queries {
@@ -57,9 +54,8 @@ func (bcr *BatchCypherRunner) batcher() {
 				continue
 			}
 		case timeout := <-timeCh:
-			log.Printf("Got timeout %v", timeout)
+			//do nothing
 		}
-		log.Printf("Running batch for queries %v", currentQueries)
 		err := bcr.cr.CypherBatch(currentQueries)
 		for _, cec := range currentErrorChannels {
 			cec <- err
