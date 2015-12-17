@@ -10,8 +10,8 @@ type CypherRunner interface {
 	CypherBatch(queries []*neoism.CypherQuery) error
 }
 
-func NewBatchCypherRunner(cypherRunner CypherRunner, count int) CypherRunner {
-	cr := BatchCypherRunner{cypherRunner, make(chan cypherBatch), count}
+func NewBatchCypherRunner(cypherRunner CypherRunner, count int, duration time.Duration) CypherRunner {
+	cr := BatchCypherRunner{cypherRunner, make(chan cypherBatch), count, duration}
 
 	go cr.batcher()
 
@@ -19,9 +19,10 @@ func NewBatchCypherRunner(cypherRunner CypherRunner, count int) CypherRunner {
 }
 
 type BatchCypherRunner struct {
-	cr    CypherRunner
-	ch    chan cypherBatch
-	count int
+	cr       CypherRunner
+	ch       chan cypherBatch
+	count    int
+	duration time.Duration
 }
 
 func (bcr *BatchCypherRunner) CypherBatch(queries []*neoism.CypherQuery) error {
@@ -45,35 +46,28 @@ func (bcr *BatchCypherRunner) batcher() {
 		select {
 		case cb := <-bcr.ch:
 			log.Println("Got request")
-			timeCh = time.NewTimer(time.Second * 2).C
+			timeCh = time.NewTimer(bcr.duration).C
 
 			for _, query := range cb.queries {
 				currentQueries = append(currentQueries, query)
 			}
 			currentErrorChannels = append(currentErrorChannels, cb.err)
 
-			if len(currentQueries) > bcr.count {
-				bcr.runBatch(&currentQueries, &currentErrorChannels)
-				timeCh = nil
+			if len(currentQueries) < bcr.count {
+				continue
 			}
 		case timeout := <-timeCh:
 			log.Printf("Got timeout %v", timeout)
-			if len(currentQueries) > 0 {
-				bcr.runBatch(&currentQueries, &currentErrorChannels)
-			}
 		}
-
+		log.Printf("Running batch for queries %v", currentQueries)
+		err := bcr.cr.CypherBatch(currentQueries)
+		for _, cec := range currentErrorChannels {
+			cec <- err
+		}
+		currentQueries = currentQueries[0:0] // clears the slice
+		currentErrorChannels = currentErrorChannels[0:0]
+		timeCh = nil
 	}
-}
-
-func (bcr *BatchCypherRunner) runBatch(currentQueries *[]*neoism.CypherQuery, currentErrorChannels *[]chan error) {
-	log.Printf("Running batch for queries %v", *currentQueries)
-	err := bcr.cr.CypherBatch(*currentQueries)
-	for _, cec := range *currentErrorChannels {
-		cec <- err
-	}
-	*currentQueries = (*currentQueries)[0:0] // clears the slice
-	*currentErrorChannels = (*currentErrorChannels)[0:0]
 }
 
 type PeopleDriver interface {
