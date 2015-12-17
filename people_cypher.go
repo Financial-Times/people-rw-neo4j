@@ -53,7 +53,7 @@ func (bcr *BatchCypherRunner) batcher() {
 			if len(currentQueries) < bcr.count {
 				continue
 			}
-		case timeout := <-timeCh:
+		case <-timeCh:
 			//do nothing
 		}
 		err := bcr.cr.CypherBatch(currentQueries)
