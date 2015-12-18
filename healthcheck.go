@@ -7,12 +7,14 @@ import (
 	"github.com/jmcvetta/neoism"
 )
 
+type hcUUIDResult struct {
+	UUID string `json:"uuid"`
+}
+
 func setUpHealthCheck(cr CypherRunner) v1a.Check {
 
 	checker := func() (string, error) {
-		var result []struct {
-			UUID string `json:"uuid"`
-		}
+		var result []hcUUIDResult
 
 		query := &neoism.CypherQuery{
 			Statement: `MATCH (n:Person) 
