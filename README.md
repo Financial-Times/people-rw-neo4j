@@ -18,6 +18,20 @@ or update:
 
 All arguments are optional, they default to a local Neo4j install on the default port (7474), application running on port 8080, batchSize of 1024 and timeoutMs of 50. NB: the default batchSize is much higher than the throughput the instance data ingester currently can cope with.
 
+## Building
+
+This service is built and deployed via Jenkins.
+
+<a href="http://ftjen10085-lvpr-uk-p:8181/job/people-rw-neo4j-build">Build job</a>
+<a href="http://ftjen10085-lvpr-uk-p:8181/job/people-rw-neo4j-deploy">Deploy job</a>
+
+The build works via git tags. To prepare a new release
+- update the version in /puppet/ft-people_rw_neo4j/Modulefile, e.g. to 0.0.12
+- git tag that commit using `git tag 0.0.12`
+- `git push --tags`
+
+The deploy also works via git tag and you can also select the environment to deploy to.
+
 ## Try it!
 
 `curl -XPUT -H "X-Request-Id: 123" -H "Content-Type: application/json" localhost:8080/people/3fa70485-3a57-3b9b-9449-774b001cd965 --data '{"uuid":"3fa70485-3a57-3b9b-9449-774b001cd965", "name":"Robert W. Addington", "identifiers":[{ "authority":"http://api.ft.com/system/FACTSET-PPL", "identifierValue":"000BJG-E"}]}'`

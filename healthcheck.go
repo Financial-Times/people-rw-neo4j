@@ -27,7 +27,7 @@ func setUpHealthCheck(db *neoism.Database) v1a.Check {
 			return "", err
 		}
 		if len(result) == 0 {
-			return "", errors.New("UUID not set")
+			return "", errors.New("No Person found")
 		}
 		if result[0].UUID == "" {
 			return "", errors.New("UUID not set")
@@ -36,11 +36,11 @@ func setUpHealthCheck(db *neoism.Database) v1a.Check {
 	}
 
 	return v1a.Check{
-		BusinessImpact:   "blah",
-		Name:             "My check",
-		PanicGuide:       "Don't panic",
+		BusinessImpact:   "Cannot read/write people via this writer",
+		Name:             "Check connectivity to Neo4j - neoUrl is a parameter in hieradata for this service",
+		PanicGuide:       "TODO - write panic guide",
 		Severity:         1,
-		TechnicalSummary: "Something technical",
+		TechnicalSummary: "Cannot connect to a Neo4j instance with at least one person loaded in it",
 		Checker:          checker,
 	}
 }
