@@ -21,7 +21,7 @@ func setUpHealthCheck(db *neoism.Database) v1a.Check {
 			Result: &result,
 		}
 
-		err := db.Cypher(query)
+		err := db.CypherBatch([]*neoism.CypherQuery{query})
 
 		if err != nil {
 			return "", err
