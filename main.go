@@ -36,7 +36,7 @@ func main() {
 func runServer(neoURL string, port string, batchSize int, timeoutMs int) {
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
-		panic(err)
+		panic(err) //TODO change to log
 	}
 
 	personIndexes, err := db.Indexes("Person")

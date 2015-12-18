@@ -28,7 +28,7 @@ type BatchCypherRunner struct {
 func (bcr *BatchCypherRunner) CypherBatch(queries []*neoism.CypherQuery) error {
 
 	errCh := make(chan error)
-	bcr.ch <- cypherBatch{queries, errCh}
+	bcr.ch <- cypherBatch{queries, errCh} //TODO make the name more distinct
 	return <-errCh
 }
 

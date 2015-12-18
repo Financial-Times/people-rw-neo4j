@@ -25,7 +25,9 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 	}{}
 
 	query := &neoism.CypherQuery{
-		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid as uuid, n.name as name, n.factsetIdentifier as factsetIdentifier`,
+		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid 
+		as uuid, n.name as name, 
+		n.factsetIdentifier as factsetIdentifier`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
 		},

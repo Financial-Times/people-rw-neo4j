@@ -7,3 +7,5 @@ TODO
 - set up production VMs
 - add build-info endpoint
 - create runbook
+- recreate nodegroup in Test so that the domain is set up so the service is monitored
+- open port for supervisord
