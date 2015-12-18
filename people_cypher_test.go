@@ -15,7 +15,7 @@ func TestCreate(t *testing.T) {
 
 	url := os.Getenv("NEO4J_TEST_URL")
 	if url == "" {
-		url := "http://localhost:7474/db/data"
+		url = "http://localhost:7474/db/data"
 	}
 
 	db, err := neoism.Connect(url)
