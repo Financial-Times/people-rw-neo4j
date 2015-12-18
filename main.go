@@ -23,15 +23,17 @@ func main() {
 	app := cli.App("people-rw-neo4j", "A RESTful API for managing People in neo4j")
 	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
 	port := app.StringOpt("port", "8080", "Port to listen on")
+	batchSize := app.IntOpt("batchSize", 1024, "Maximum number of statements to execute per batch")
+	timeoutMs := app.IntOpt("timeoutMs", 20, "Number of milliseconds to wait before executing a batch of statements regardless of its size")
 
 	app.Action = func() {
-		runServer(*neoURL, *port)
+		runServer(*neoURL, *port, *batchSize, *timeoutMs)
 	}
 
 	app.Run(os.Args)
 }
 
-func runServer(neoURL string, port string) {
+func runServer(neoURL string, port string, batchSize int, timeoutMs int) {
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
 		panic(err)
@@ -56,7 +58,7 @@ func runServer(neoURL string, port string) {
 		db.CreateIndex("Person", "uuid")
 	}
 
-	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, 50, time.Millisecond*20))
+	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
 
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")

@@ -14,9 +14,9 @@ or update:
 	
 ## Running
 
-`$GOPATH/bin/people-rw-neo4j --neo-url={neo4jUrl} --port={port}
+`$GOPATH/bin/people-rw-neo4j --neo-url={neo4jUrl} --port={port} --batchSize=50 --timeoutMs=20
 
-Both arguments are optional, they default to a local Neo4j install on the default port (7474) and port 8080.
+All arguments are optional, they default to a local Neo4j install on the default port (7474), application running on port 8080, batchSize of 1024 and timeoutMs of 50. NB: the default batchSize is much higher than the throughput the instance data ingester currently can cope with.
 
 ## Try it!
 

@@ -1,4 +1,6 @@
 TODO
-- Occasional error: "http: multiple response.WriteHeader calls"
+- Occasional error seen in the logs when running instance data load tests: "http: multiple response.WriteHeader calls"
 - Log format, and logging at e.g. INFO vs WARN vs ERROR
-- Lots of failures when running batches but no logs visible as a result of log calls in the app
+- More tests, including copies of all the special character tests from the Java equivalent
+- Metrics integration
+- Document how to build it
