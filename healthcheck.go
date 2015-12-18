@@ -7,7 +7,7 @@ import (
 	"github.com/jmcvetta/neoism"
 )
 
-func setUpHealthCheck(db *neoism.Database) v1a.Check {
+func setUpHealthCheck(cr CypherRunner) v1a.Check {
 
 	checker := func() (string, error) {
 		var result []struct {
@@ -21,7 +21,7 @@ func setUpHealthCheck(db *neoism.Database) v1a.Check {
 			Result: &result,
 		}
 
-		err := db.CypherBatch([]*neoism.CypherQuery{query})
+		err := cr.CypherBatch([]*neoism.CypherQuery{query})
 
 		if err != nil {
 			return "", err
