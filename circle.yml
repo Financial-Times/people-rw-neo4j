@@ -1,0 +1,10 @@
+machine:
+  services:
+    - neo4j
+  environment:
+    NEO4J_TEST_URL: http://neo4j:x@localhost:7474/db/data/
+
+test:
+  pre:
+    - http -a neo4j:neo4j POST http://localhost:7474/user/neo4j/password password=x
+
