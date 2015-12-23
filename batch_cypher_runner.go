@@ -40,32 +40,32 @@ type cypherBatch struct {
 func (bcr *BatchCypherRunner) batcher() {
 	var currentQueries []*neoism.CypherQuery
 	var currentErrorChannels []chan error
-	var timeCh <-chan time.Time
+	timer := time.NewTimer(1 * time.Second)
 	for {
 		select {
 		case cb := <-bcr.ch:
-			timeCh = time.NewTimer(bcr.duration).C
-
 			for _, query := range cb.queries {
 				currentQueries = append(currentQueries, query)
 			}
 			currentErrorChannels = append(currentErrorChannels, cb.err)
 
 			if len(currentQueries) < bcr.count {
+				timer.Reset(bcr.duration)
 				continue
 			}
-		case <-timeCh:
+		case <-timer.C:
 			//do nothing
 		}
-		err := bcr.cr.CypherBatch(currentQueries)
-		if err != nil {
-			log.Printf("Got error running batch, error=%v", err)
+		if len(currentQueries) > 0 {
+			err := bcr.cr.CypherBatch(currentQueries)
+			if err != nil {
+				log.Printf("Got error running batch, error=%v", err)
+			}
+			for _, cec := range currentErrorChannels {
+				cec <- err
+			}
+			currentQueries = currentQueries[0:0] // clears the slice
+			currentErrorChannels = currentErrorChannels[0:0]
 		}
-		for _, cec := range currentErrorChannels {
-			cec <- err
-		}
-		currentQueries = currentQueries[0:0] // clears the slice
-		currentErrorChannels = currentErrorChannels[0:0]
-		timeCh = nil
 	}
 }
