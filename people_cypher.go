@@ -7,6 +7,7 @@ import (
 type PeopleDriver interface {
 	Write(p person) error
 	Read(uuid string) (p person, found bool, err error)
+	Delete(uuid string) error
 }
 
 type PeopleCypherDriver struct {
@@ -21,13 +22,17 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 	results := []struct {
 		UUID              string `json:"uuid"`
 		Name              string `json: "name"`
+		BirthYear         int    `json: "birthYear"`
+		Salutation        string `json: "salutation"`
 		FactsetIdentifier string `json: "factsetIdentifier"`
 	}{}
 
 	query := &neoism.CypherQuery{
 		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid 
 		as uuid, n.name as name, 
-		n.factsetIdentifier as factsetIdentifier`,
+		n.factsetIdentifier as factsetIdentifier,
+		n.birthYear as birthYear,
+		n.salutation as salutation`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
 		},
@@ -47,8 +52,10 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 	result := results[0]
 
 	p := person{
-		UUID: result.UUID,
-		Name: result.Name,
+		UUID:       result.UUID,
+		Name:       result.Name,
+		BirthYear:  result.BirthYear,
+		Salutation: result.Salutation,
 	}
 
 	if result.FactsetIdentifier != "" {
@@ -62,8 +69,19 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 func (pcd PeopleCypherDriver) Write(p person) error {
 
 	params := map[string]interface{}{
-		"name": p.Name,
 		"uuid": p.UUID,
+	}
+
+	if p.Name != "" {
+		params["name"] = p.Name
+	}
+
+	if p.BirthYear != 0 {
+		params["birthYear"] = p.BirthYear
+	}
+
+	if p.Salutation != "" {
+		params["salutation"] = p.Salutation
 	}
 
 	for _, identifier := range p.Identifiers {
@@ -84,6 +102,17 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 
 	return pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
+}
+
+func (pcd PeopleCypherDriver) Delete(uuid string) error {
+	query := &neoism.CypherQuery{
+		Statement: `MATCH (n:Person {uuid:{uuid}}) DELETE n`,
+		Parameters: map[string]interface{}{
+			"uuid": uuid,
+		},
+	}
+
+	return pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 }
 
 const (

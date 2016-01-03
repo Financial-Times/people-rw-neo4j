@@ -18,6 +18,11 @@ or update:
 
 All arguments are optional, they default to a local Neo4j install on the default port (7474), application running on port 8080, batchSize of 1024 and timeoutMs of 50. NB: the default batchSize is much higher than the throughput the instance data ingester currently can cope with.
 
+## Updating the model
+Use gojson against a transformer endpoint to create a person struct and update the model.go file. NB: we DO need a separate identifier struct
+
+`curl http://ftaps35629-law1a-eu-t:8080/transformers/people/ad60f5b2-4306-349d-92d8-cf9d9572a6f6 | gojson -name=person`
+
 ## Building
 
 This service is built and deployed via Jenkins.

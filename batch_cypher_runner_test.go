@@ -116,5 +116,5 @@ type failRunner struct {
 }
 
 func (mr *failRunner) CypherBatch(queries []*neoism.CypherQuery) error {
-	return errors.New("Fail for every query")
+	return errors.New("UNIT TESTING: Deliberate fail for every query")
 }
