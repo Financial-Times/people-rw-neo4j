@@ -62,8 +62,9 @@ func (bcr *BatchCypherRunner) batcher() {
 		}
 		if len(currentQueries) > 0 {
 			t := metrics.GetOrRegisterTimer("execute-neo4j-batch", metrics.DefaultRegistry)
+			var err error
 			t.Time(func() {
-				err := bcr.cr.CypherBatch(currentQueries)
+				err = bcr.cr.CypherBatch(currentQueries)
 			})
 			if err != nil {
 				log.Printf("Got error running batch, error=%v", err)
