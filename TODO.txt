@@ -1,5 +1,4 @@
 TODO
-- occasional error seen in the logs when running instance data load tests: "http: multiple response.WriteHeader calls"
 - log format, and logging at e.g. INFO vs WARN vs ERROR
 - more tests, including copies of all the special character tests from the Java equivalent
 - metrics integration
@@ -9,3 +8,4 @@ TODO
 - create runbook
 - recreate nodegroup in Test so that the domain is set up so the service is monitored
 - open port for supervisord
+- change build job so don't have to update modulefile AND tag

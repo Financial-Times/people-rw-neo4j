@@ -44,6 +44,21 @@ func TestCreateAllValuesPresent(t *testing.T) {
 	cleanUp(t, uuid)
 }
 
+func TestCreateHandlesSpecialCharacters(t *testing.T) {
+	assert := assert.New(t)
+	uuid := "12345"
+	peopleDriver = getPeopleCypherDriver(t)
+
+	personToWrite := person{UUID: uuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr",
+		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
+
+	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
+
+	readPersonForUuidAndCheckFieldsMatch(t, uuid, personToWrite)
+
+	cleanUp(t, uuid)
+}
+
 func TestCreateNotAllValuesPresent(t *testing.T) {
 	assert := assert.New(t)
 	uuid := "12345"

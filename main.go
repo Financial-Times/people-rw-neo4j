@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
+	//"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	"github.com/jmcvetta/neoism"
+	"github.com/rcrowley/go-metrics"
 	"io"
 	"log"
 	"net/http"
@@ -60,13 +62,17 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int) {
 
 	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
 
+	//TODO - only do this for local running. For deployments, use a new arg to specify a graphite server to write to
+	// and set up graphite integration
+	go metrics.Log(metrics.DefaultRegistry, 60*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
 	r.HandleFunc("/people/{uuid}", peopleRead).Methods("GET")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
 		"Checks for accessing neo4j", setUpHealthCheck(db)))
 	r.HandleFunc("/ping", ping)
-	http.ListenAndServe(":"+port, handlers.CombinedLoggingHandler(os.Stdout, r))
+	http.ListenAndServe(":"+port, HttpMetricsHandler(handlers.CombinedLoggingHandler(os.Stdout, r)))
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +95,7 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
+	//Not necessary for a 200 to be returned, but for PUT requests, if don't specify, don't see 200 status logged in request logs
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -118,8 +125,6 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-
 }
 
 func parsePerson(jsonInput io.Reader) (person, error) {
@@ -127,4 +132,17 @@ func parsePerson(jsonInput io.Reader) (person, error) {
 	var p person
 	err := dec.Decode(&p)
 	return p, err
+}
+
+func HttpMetricsHandler(h http.Handler) http.Handler {
+	return httpMetricsHandler{h}
+}
+
+type httpMetricsHandler struct {
+	handler http.Handler
+}
+
+func (h httpMetricsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	t := metrics.GetOrRegisterTimer(req.Method, metrics.DefaultRegistry)
+	t.Time(func() { h.handler.ServeHTTP(w, req) })
 }
