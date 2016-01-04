@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
-	//"github.com/cyberdelia/go-metrics-graphite"
+	"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
@@ -12,6 +12,7 @@ import (
 	"github.com/rcrowley/go-metrics"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -26,16 +27,23 @@ func main() {
 	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
 	port := app.StringOpt("port", "8080", "Port to listen on")
 	batchSize := app.IntOpt("batchSize", 1024, "Maximum number of statements to execute per batch")
-	timeoutMs := app.IntOpt("timeoutMs", 20, "Number of milliseconds to wait before executing a batch of statements regardless of its size")
+	timeoutMs := app.IntOpt("timeoutMs", 20,
+		"Number of milliseconds to wait before executing a batch of statements regardless of its size")
+	graphiteTCPAddress := app.StringOpt("graphiteTCPAddress", "",
+		"Graphite TCP address, e.g. graphite.ft.com:2003. Leave as default if you do NOT want to output to graphite (e.g. if running locally)")
+	graphitePrefix := app.StringOpt("graphitePrefix", "",
+		"Prefix to use. Should start with content, include the environment, and the host name. e.g. content.test.people.rw.neo4j.ftaps58938-law1a-eu-t")
+	logMetrics := app.BoolOpt("logMetrics", false, "Whether to log metrics. Set to true if running locally and you want metrics output")
 
 	app.Action = func() {
-		runServer(*neoURL, *port, *batchSize, *timeoutMs)
+		runServer(*neoURL, *port, *batchSize, *timeoutMs, *graphiteTCPAddress, *graphitePrefix, *logMetrics)
 	}
 
 	app.Run(os.Args)
 }
 
-func runServer(neoURL string, port string, batchSize int, timeoutMs int) {
+func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphiteTCPAddress string,
+	graphitePrefix string, logMetrics bool) {
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
 		panic(err) //TODO change to log
@@ -62,9 +70,13 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int) {
 
 	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
 
-	//TODO - only do this for local running. For deployments, use a new arg to specify a graphite server to write to
-	// and set up graphite integration
-	go metrics.Log(metrics.DefaultRegistry, 60*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	if graphiteTCPAddress != "" {
+		addr, _ := net.ResolveTCPAddr("tcp", graphiteTCPAddress)
+		go graphite.Graphite(metrics.DefaultRegistry, 10e9, graphitePrefix, addr)
+	}
+	if logMetrics { //useful locally
+		go metrics.Log(metrics.DefaultRegistry, 60*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
