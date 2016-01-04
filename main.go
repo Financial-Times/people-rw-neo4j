@@ -44,9 +44,12 @@ func main() {
 
 func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphiteTCPAddress string,
 	graphitePrefix string, logMetrics bool) {
+
+	InitLogging(os.Stdout, os.Stdout, os.Stderr)
+
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
-		panic(err) //TODO change to log
+		Error.Println("Could not connect to neo4j, error=[%s]", err)
 	}
 
 	personIndexes, err := db.Indexes("Person")
@@ -64,7 +67,7 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphit
 		}
 	}
 	if !indexFound {
-		log.Printf("Creating index for person for neo4j instance at %s", neoURL)
+		Info.Println("Creating index for person for neo4j instance at %s", neoURL)
 		db.CreateIndex("Person", "uuid")
 	}
 
@@ -72,7 +75,7 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphit
 
 	if graphiteTCPAddress != "" {
 		addr, _ := net.ResolveTCPAddr("tcp", graphiteTCPAddress)
-		go graphite.Graphite(metrics.DefaultRegistry, 10e9, graphitePrefix, addr)
+		go graphite.Graphite(metrics.DefaultRegistry, 1*time.Minute, graphitePrefix, addr)
 	}
 	if logMetrics { //useful locally
 		go metrics.Log(metrics.DefaultRegistry, 60*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
@@ -96,14 +99,14 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	uuid := vars["uuid"]
 	p, err := parsePerson(r.Body)
 	if err != nil || p.UUID != uuid {
-		log.Printf("Error on parse=%v", err)
+		Error.Println("Error on parse=%v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = peopleDriver.Write(p)
 	if err != nil {
-		log.Printf("Error on write=%v", err)
+		Error.Println("Error on write=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -120,7 +123,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
 	if err != nil {
-		log.Printf("Error on read=%v", err)
+		Error.Println("Error on read=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -133,7 +136,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 
 	if err := enc.Encode(p); err != nil {
-		log.Printf("Error on json encoding=%v", err)
+		Error.Println("Error on json encoding=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
