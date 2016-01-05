@@ -7,10 +7,12 @@ import (
 	"testing"
 )
 
+const neoUrl = "http://localhost:7474/db/data"
+
 func TestHealthCheckSuccess(t *testing.T) {
 	assert := assert.New(t)
 	runner := hcMockRunner{result: hcUUIDResult{UUID: "e80c286f-aa90-465c-a41b-281ff9b8bad3"}, returnResult: true}
-	hc := setUpHealthCheck(runner)
+	hc := setUpHealthCheck(runner, neoUrl)
 	_, err := hc.Checker()
 	assert.NoError(err)
 }
@@ -18,7 +20,7 @@ func TestHealthCheckSuccess(t *testing.T) {
 func TestHealthNoResult(t *testing.T) {
 	assert := assert.New(t)
 	runner := hcMockRunner{returnResult: false}
-	hc := setUpHealthCheck(runner)
+	hc := setUpHealthCheck(runner, neoUrl)
 	_, err := hc.Checker()
 	assert.Error(err)
 }
@@ -26,16 +28,16 @@ func TestHealthNoResult(t *testing.T) {
 func TestHealthCheckNoUUID(t *testing.T) {
 	assert := assert.New(t)
 	runner := hcMockRunner{result: hcUUIDResult{UUID: ""}, returnResult: true}
-	hc := setUpHealthCheck(runner)
+	hc := setUpHealthCheck(runner, neoUrl)
 	_, err := hc.Checker()
 	assert.Error(err)
 }
 
-func TestHealthCheckPropogateError(t *testing.T) {
+func TestHealthCheckPropagateError(t *testing.T) {
 	assert := assert.New(t)
 	theError := errors.New("expected error")
 	runner := hcMockRunner{err: theError}
-	hc := setUpHealthCheck(runner)
+	hc := setUpHealthCheck(runner, neoUrl)
 	_, err := hc.Checker()
 	assert.Equal(theError, err)
 }

@@ -12,7 +12,7 @@ type hcUUIDResult struct {
 	UUID string `json:"uuid"`
 }
 
-func setUpHealthCheck(cr neocypherrunner.CypherRunner) v1a.Check {
+func setUpHealthCheck(cr neocypherrunner.CypherRunner, neoURL string) v1a.Check {
 
 	checker := func() (string, error) {
 		var result []hcUUIDResult
@@ -43,7 +43,7 @@ func setUpHealthCheck(cr neocypherrunner.CypherRunner) v1a.Check {
 		Name:             "Check connectivity to Neo4j - neoUrl is a parameter in hieradata for this service",
 		PanicGuide:       "TODO - write panic guide",
 		Severity:         1,
-		TechnicalSummary: "Cannot connect to a Neo4j instance with at least one person loaded in it",
+		TechnicalSummary: fmt.Sprintf("Cannot connect to Neo4j instance %s with at least one person loaded in it", neoURL),
 		Checker:          checker,
 	}
 }
