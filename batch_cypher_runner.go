@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/jmcvetta/neoism"
 	"github.com/rcrowley/go-metrics"
+	"log"
 	"time"
 )
 
@@ -66,7 +67,7 @@ func (bcr *BatchCypherRunner) batcher() {
 				err = bcr.cr.CypherBatch(currentQueries)
 			})
 			if err != nil {
-				Error.Println("Got error running batch, error=%v", err)
+				log.Println("ERROR Got error running batch, error=%v", err)
 			}
 			for _, cec := range currentErrorChannels {
 				cec <- err

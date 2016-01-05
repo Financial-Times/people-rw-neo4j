@@ -45,17 +45,19 @@ func main() {
 func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphiteTCPAddress string,
 	graphitePrefix string, logMetrics bool) {
 
-	InitLogging(os.Stdout, os.Stdout, os.Stderr)
+	flags := log.Ldate | log.Ltime | log.Lshortfile
+
+	log.SetFlags(flags)
 
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
-		Error.Println("Could not connect to neo4j, error=[%s]", err)
+		log.Println("ERROR Could not connect to neo4j, error=[%s]", err)
 	}
 
 	personIndexes, err := db.Indexes("Person")
 
 	if err != nil {
-		panic(err)
+		log.Println("ERROR Error on creating index=%v", err)
 	}
 
 	var indexFound bool
@@ -67,7 +69,7 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphit
 		}
 	}
 	if !indexFound {
-		Info.Println("Creating index for person for neo4j instance at %s", neoURL)
+		log.Println("INFO Creating index for person for neo4j instance at %s", neoURL)
 		db.CreateIndex("Person", "uuid")
 	}
 
@@ -99,14 +101,14 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	uuid := vars["uuid"]
 	p, err := parsePerson(r.Body)
 	if err != nil || p.UUID != uuid {
-		Error.Println("Error on parse=%v", err)
+		log.Println("ERROR Error on parse=%v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = peopleDriver.Write(p)
 	if err != nil {
-		Error.Println("Error on write=%v", err)
+		log.Println("ERROR Error on write=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -123,7 +125,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
 	if err != nil {
-		Error.Println("Error on read=%v", err)
+		log.Println("ERROR Error on read=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -136,7 +138,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 
 	if err := enc.Encode(p); err != nil {
-		Error.Println("Error on json encoding=%v", err)
+		log.Println("ERROR Error on json encoding=%v", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
