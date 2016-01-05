@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/Financial-Times/neo-cypher-runner-go"
 	"github.com/jmcvetta/neoism"
 )
 
@@ -11,7 +12,7 @@ type hcUUIDResult struct {
 	UUID string `json:"uuid"`
 }
 
-func setUpHealthCheck(cr CypherRunner) v1a.Check {
+func setUpHealthCheck(cr neocypherrunner.CypherRunner) v1a.Check {
 
 	checker := func() (string, error) {
 		var result []hcUUIDResult

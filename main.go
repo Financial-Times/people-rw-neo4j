@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/Financial-Times/neo-cypher-runner-go"
 	"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -22,7 +23,9 @@ import (
 var peopleDriver PeopleDriver
 
 func main() {
-	fmt.Println(os.Args)
+	flags := log.Ldate | log.Ltime | log.Lshortfile
+	log.SetFlags(flags)
+	log.Println("Application started with args %s", os.Args)
 	app := cli.App("people-rw-neo4j", "A RESTful API for managing People in neo4j")
 	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
 	port := app.StringOpt("port", "8080", "Port to listen on")
@@ -45,20 +48,16 @@ func main() {
 func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphiteTCPAddress string,
 	graphitePrefix string, logMetrics bool) {
 
-	flags := log.Ldate | log.Ltime | log.Lshortfile
-
-	log.SetFlags(flags)
-
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
-		log.Println("ERROR Could not connect to neo4j, error=[%s]", err)
+		log.Printf("ERROR Could not connect to neo4j, error=[%s]\n", err)
 	}
 
 	ensureIndex(db, "Thing", "uuid")
 	ensureIndex(db, "Concept", "uuid")
 	ensureIndex(db, "Person", "uuid")
 
-	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
+	peopleDriver = NewPeopleCypherDriver(neocypherrunner.NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
 
 	if graphiteTCPAddress != "" {
 		addr, _ := net.ResolveTCPAddr("tcp", graphiteTCPAddress)
@@ -82,7 +81,7 @@ func ensureIndex(db *neoism.Database, label string, property string) {
 	personIndexes, err := db.Indexes(label)
 
 	if err != nil {
-		log.Println("ERROR Error on creating index=%v", err)
+		log.Printf("ERROR Error on creating index=%v\n", err)
 	}
 
 	var indexFound bool
@@ -94,7 +93,7 @@ func ensureIndex(db *neoism.Database, label string, property string) {
 		}
 	}
 	if !indexFound {
-		log.Println("INFO Creating index for person for neo4j instance at %s", db.Url)
+		log.Printf("INFO Creating index for person for neo4j instance at %s\n", db.Url)
 		db.CreateIndex(label, property)
 	}
 
@@ -109,14 +108,14 @@ func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	uuid := vars["uuid"]
 	p, err := parsePerson(r.Body)
 	if err != nil || p.UUID != uuid {
-		log.Println("ERROR Error on parse=%v", err)
+		log.Printf("ERROR Error on parse=%v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = peopleDriver.Write(p)
 	if err != nil {
-		log.Println("ERROR Error on write=%v", err)
+		log.Printf("ERROR Error on write=%v\n", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -133,7 +132,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
 	if err != nil {
-		log.Println("ERROR Error on read=%v", err)
+		log.Printf("ERROR Error on read=%v\n", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -146,7 +145,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 
 	if err := enc.Encode(p); err != nil {
-		log.Println("ERROR Error on json encoding=%v", err)
+		log.Printf("ERROR Error on json encoding=%v\n", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}

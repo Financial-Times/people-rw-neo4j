@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Financial-Times/neo-cypher-runner-go"
 	"github.com/jmcvetta/neoism"
 )
 
@@ -11,10 +12,10 @@ type PeopleDriver interface {
 }
 
 type PeopleCypherDriver struct {
-	cypherRunner CypherRunner
+	cypherRunner neocypherrunner.CypherRunner
 }
 
-func NewPeopleCypherDriver(cypherRunner CypherRunner) PeopleCypherDriver {
+func NewPeopleCypherDriver(cypherRunner neocypherrunner.CypherRunner) PeopleCypherDriver {
 	return PeopleCypherDriver{cypherRunner}
 }
 
