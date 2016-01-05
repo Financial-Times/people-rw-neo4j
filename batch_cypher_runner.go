@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/jmcvetta/neoism"
 	"github.com/rcrowley/go-metrics"
-	"log"
 	"time"
 )
 
