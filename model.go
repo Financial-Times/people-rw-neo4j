@@ -1,11 +1,11 @@
 package main
 
 type person struct {
-	BirthYear   int          `json:"birthYear"`
-	Identifiers []identifier `json:"identifiers"`
-	Name        string       `json:"name"`
+	BirthYear   int          `json:"birthYear,omitempty"`
+	Identifiers []identifier `json:"identifiers,omitempty"`
+	Name        string       `json:"name,omitempty"`
 	UUID        string       `json:"uuid"`
-	Salutation  string       `json:"salutation"`
+	Salutation  string       `json:"salutation,omitempty"`
 }
 
 type identifier struct {
