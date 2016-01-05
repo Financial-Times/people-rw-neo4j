@@ -54,24 +54,7 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphit
 		log.Println("ERROR Could not connect to neo4j, error=[%s]", err)
 	}
 
-	personIndexes, err := db.Indexes("Person")
-
-	if err != nil {
-		log.Println("ERROR Error on creating index=%v", err)
-	}
-
-	var indexFound bool
-
-	for _, index := range personIndexes {
-		if len(index.PropertyKeys) == 1 && index.PropertyKeys[0] == "uuid" {
-			indexFound = true
-			break
-		}
-	}
-	if !indexFound {
-		log.Println("INFO Creating index for person for neo4j instance at %s", neoURL)
-		db.CreateIndex("Person", "uuid")
-	}
+	ensureIndex(db, "Person", "uuid")
 
 	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
 
@@ -90,6 +73,29 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphit
 		"Checks for accessing neo4j", setUpHealthCheck(db)))
 	r.HandleFunc("/ping", ping)
 	http.ListenAndServe(":"+port, HttpMetricsHandler(handlers.CombinedLoggingHandler(os.Stdout, r)))
+}
+
+func ensureIndex(db *neoism.Database, label string, property string) {
+
+	personIndexes, err := db.Indexes(label)
+
+	if err != nil {
+		log.Println("ERROR Error on creating index=%v", err)
+	}
+
+	var indexFound bool
+
+	for _, index := range personIndexes {
+		if len(index.PropertyKeys) == 1 && index.PropertyKeys[0] == property {
+			indexFound = true
+			break
+		}
+	}
+	if !indexFound {
+		log.Println("INFO Creating index for person for neo4j instance at %s", db.Url)
+		db.CreateIndex(label, property)
+	}
+
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
