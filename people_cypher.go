@@ -91,9 +91,11 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 	}
 
 	query := &neoism.CypherQuery{
-		Statement: `MERGE (n:Person {uuid: {uuid}}) 
+		Statement: `MERGE (n:Thing {uuid: {uuid}}) 
 					set n={allprops}
-					return  n`,
+					set n :Concept
+					set n :Person
+		`,
 		Parameters: map[string]interface{}{
 			"uuid":     p.UUID,
 			"allprops": params,
@@ -105,6 +107,8 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 }
 
 func (pcd PeopleCypherDriver) Delete(uuid string) error {
+	//TODO: this need to use the approach described in :
+	// https://docs.google.com/document/d/1Ec-umbNOZa9zht2FImAY-fsMDFgDDxBUMeokDTZZ3tQ/edit#heading=h.pgfg88uoy07a
 	query := &neoism.CypherQuery{
 		Statement: `MATCH (n:Person {uuid:{uuid}}) DELETE n`,
 		Parameters: map[string]interface{}{

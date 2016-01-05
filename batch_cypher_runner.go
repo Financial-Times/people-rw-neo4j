@@ -67,7 +67,7 @@ func (bcr *BatchCypherRunner) batcher() {
 				err = bcr.cr.CypherBatch(currentQueries)
 			})
 			if err != nil {
-				log.Println("ERROR Got error running batch, error=%v", err)
+				log.Printf("ERROR Got error running batch, error=%v\n", err)
 			}
 			for _, cec := range currentErrorChannels {
 				cec <- err
