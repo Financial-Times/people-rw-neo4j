@@ -54,6 +54,8 @@ func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphit
 		log.Println("ERROR Could not connect to neo4j, error=[%s]", err)
 	}
 
+	ensureIndex(db, "Thing", "uuid")
+	ensureIndex(db, "Concept", "uuid")
 	ensureIndex(db, "Person", "uuid")
 
 	peopleDriver = NewPeopleCypherDriver(NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
