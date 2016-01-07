@@ -2,13 +2,14 @@ package main
 
 import (
 	"github.com/Financial-Times/neo-cypher-runner-go"
+	log "github.com/Sirupsen/logrus"
 	"github.com/jmcvetta/neoism"
 )
 
 type PeopleDriver interface {
 	Write(p person) error
 	Read(uuid string) (p person, found bool, err error)
-	Delete(uuid string) error
+	Delete(uuid string) (found bool, err error)
 }
 
 type PeopleCypherDriver struct {
@@ -39,6 +40,8 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 		},
 		Result: &results,
 	}
+
+	log.Debugf("Executing query %s", query)
 
 	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
@@ -107,17 +110,49 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 
 }
 
-func (pcd PeopleCypherDriver) Delete(uuid string) error {
-	//TODO: this need to use the approach described in :
-	// https://docs.google.com/document/d/1Ec-umbNOZa9zht2FImAY-fsMDFgDDxBUMeokDTZZ3tQ/edit#heading=h.pgfg88uoy07a
-	query := &neoism.CypherQuery{
-		Statement: `MATCH (n:Person {uuid:{uuid}}) DELETE n`,
+func (pcd PeopleCypherDriver) Delete(uuid string) (bool, error) {
+	clearNode := &neoism.CypherQuery{
+		Statement: `
+			MATCH (p:Thing {uuid: {uuid}})
+			REMOVE p:Concept
+			REMOVE p:Person
+			SET p={props}
+		`,
+		Parameters: map[string]interface{}{
+			"uuid": uuid,
+			"props": map[string]interface{}{
+				"uuid": uuid,
+			},
+		},
+		IncludeStats: true,
+	}
+
+	removeNodeIfUnused := &neoism.CypherQuery{
+		Statement: `
+			MATCH (p:Thing {uuid: {uuid}})
+			OPTIONAL MATCH (p)-[a]-(x)
+			WITH p, count(a) AS relCount
+			WHERE relCount = 0
+			DELETE p
+		`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
 		},
 	}
 
-	return pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{clearNode, removeNodeIfUnused})
+
+	s1, err := clearNode.Stats()
+	if err != nil {
+		return false, err
+	}
+
+	var deleted bool
+	if s1.ContainsUpdates && s1.LabelsRemoved > 0 {
+		deleted = true
+	}
+
+	return deleted, err
 }
 
 const (

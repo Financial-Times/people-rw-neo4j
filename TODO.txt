@@ -9,3 +9,4 @@ TODO
 - recreate nodegroup in Test so that the domain is set up so the service is monitored
 - open port for supervisord
 - change build job so don't have to update modulefile AND tag
+- finish main_test.go

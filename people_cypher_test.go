@@ -5,9 +5,12 @@ package main
 import (
 	"github.com/jmcvetta/neoism"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 	"os"
 	"testing"
 )
+
+var ctx = context.Background()
 
 func TestDelete(t *testing.T) {
 	assert := assert.New(t)
@@ -20,10 +23,11 @@ func TestDelete(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(personToDelete), "Failed to write person")
 
-	err := peopleDriver.Delete(uuid)
+	found, err := peopleDriver.Delete(uuid)
+	assert.True(found, "Didn't manage to delete person for uuid %", uuid)
 	assert.NoError(err, "Error deleting person for uuid %s", uuid)
 
-	_, found, err := peopleDriver.Read(uuid)
+	_, found, err = peopleDriver.Read(uuid)
 
 	assert.False(found, "Found person for uuid %s who should have been deleted", uuid)
 	assert.NoError(err, "Error trying to find person for uuid %s", uuid)
@@ -117,6 +121,7 @@ func readPersonForUuidAndCheckFieldsMatch(t *testing.T, uuid string, expectedPer
 
 func cleanUp(t *testing.T, uuid string) {
 	assert := assert.New(t)
-	err := peopleDriver.Delete(uuid)
+	found, err := peopleDriver.Delete(uuid)
+	assert.True(found, "Didn't manage to delete person for uuid %", uuid)
 	assert.NoError(err, "Error deleting person for uuid %s", uuid)
 }

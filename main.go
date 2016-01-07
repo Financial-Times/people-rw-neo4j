@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/neo-cypher-runner-go"
+	log "github.com/Sirupsen/logrus"
 	"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -12,7 +13,7 @@ import (
 	"github.com/jmcvetta/neoism"
 	"github.com/rcrowley/go-metrics"
 	"io"
-	"log"
+	standardLog "log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,15 +24,14 @@ import (
 var peopleDriver PeopleDriver
 
 func main() {
-	flags := log.Ldate | log.Ltime | log.Lshortfile
-	log.SetFlags(flags)
-	log.Println("Application started with args %s", os.Args)
+	log.SetLevel(log.InfoLevel)
+	//TODO - log formatting?
+	log.Infof("Application started with args %s", os.Args)
+
 	app := cli.App("people-rw-neo4j", "A RESTful API for managing People in neo4j")
 	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
 	port := app.StringOpt("port", "8080", "Port to listen on")
 	batchSize := app.IntOpt("batchSize", 1024, "Maximum number of statements to execute per batch")
-	timeoutMs := app.IntOpt("timeoutMs", 20,
-		"Number of milliseconds to wait before executing a batch of statements regardless of its size")
 	graphiteTCPAddress := app.StringOpt("graphiteTCPAddress", "",
 		"Graphite TCP address, e.g. graphite.ft.com:2003. Leave as default if you do NOT want to output to graphite (e.g. if running locally)")
 	graphitePrefix := app.StringOpt("graphitePrefix", "",
@@ -39,33 +39,27 @@ func main() {
 	logMetrics := app.BoolOpt("logMetrics", false, "Whether to log metrics. Set to true if running locally and you want metrics output")
 
 	app.Action = func() {
-		runServer(*neoURL, *port, *batchSize, *timeoutMs, *graphiteTCPAddress, *graphitePrefix, *logMetrics)
+		runServer(*neoURL, *port, *batchSize, *graphiteTCPAddress, *graphitePrefix, *logMetrics)
 	}
 
 	app.Run(os.Args)
 }
 
-func runServer(neoURL string, port string, batchSize int, timeoutMs int, graphiteTCPAddress string,
+func runServer(neoURL string, port string, batchSize int, graphiteTCPAddress string,
 	graphitePrefix string, logMetrics bool) {
 
 	db, err := neoism.Connect(neoURL)
 	if err != nil {
-		log.Printf("ERROR Could not connect to neo4j, error=[%s]\n", err)
+		log.Errorf("Could not connect to neo4j, error=[%s]\n", err)
 	}
 
 	ensureIndex(db, "Thing", "uuid")
 	ensureIndex(db, "Concept", "uuid")
 	ensureIndex(db, "Person", "uuid")
 
-	peopleDriver = NewPeopleCypherDriver(neocypherrunner.NewBatchCypherRunner(db, batchSize, time.Millisecond*time.Duration(timeoutMs)))
+	peopleDriver = NewPeopleCypherDriver(neocypherrunner.NewBatchCypherRunner(db, batchSize))
 
-	if graphiteTCPAddress != "" {
-		addr, _ := net.ResolveTCPAddr("tcp", graphiteTCPAddress)
-		go graphite.Graphite(metrics.DefaultRegistry, 1*time.Minute, graphitePrefix, addr)
-	}
-	if logMetrics { //useful locally
-		go metrics.Log(metrics.DefaultRegistry, 60*time.Second, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
-	}
+	outputMetricsIfRequired(graphiteTCPAddress, graphitePrefix, logMetrics)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
@@ -81,7 +75,7 @@ func ensureIndex(db *neoism.Database, label string, property string) {
 	personIndexes, err := db.Indexes(label)
 
 	if err != nil {
-		log.Printf("ERROR Error on creating index=%v\n", err)
+		log.Errorf("Error on creating index=%v\n", err)
 	}
 
 	var indexFound bool
@@ -93,10 +87,21 @@ func ensureIndex(db *neoism.Database, label string, property string) {
 		}
 	}
 	if !indexFound {
-		log.Printf("INFO Creating index for person for neo4j instance at %s\n", db.Url)
+		log.Infof("Creating index for person for neo4j instance at %s\n", db.Url)
 		db.CreateIndex(label, property)
 	}
 
+}
+
+func outputMetricsIfRequired(graphiteTCPAddress string, graphitePrefix string, logMetrics bool) {
+	if graphiteTCPAddress != "" {
+		addr, _ := net.ResolveTCPAddr("tcp", graphiteTCPAddress)
+		go graphite.Graphite(metrics.DefaultRegistry, 1*time.Minute, graphitePrefix, addr)
+	}
+	if logMetrics { //useful locally
+		//messy use of the 'standard' log package here as this method takes the log struct, not an interface, so can't use logrus.Logger
+		go metrics.Log(metrics.DefaultRegistry, 60*time.Second, standardLog.New(os.Stdout, "metrics", standardLog.Lmicroseconds))
+	}
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
@@ -106,16 +111,17 @@ func ping(w http.ResponseWriter, r *http.Request) {
 func peopleWrite(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["uuid"]
+	//transactionId := GetTransactionIdFromRequest(r)
 	p, err := parsePerson(r.Body)
 	if err != nil || p.UUID != uuid {
-		log.Printf("ERROR Error on parse=%v\n", err)
+		log.Errorf("Error on parse=%v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = peopleDriver.Write(p)
 	if err != nil {
-		log.Printf("ERROR Error on write=%v\n", err)
+		log.Errorf("Error on write=%v\n", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -127,12 +133,14 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	uuid := vars["uuid"]
 
+	//transactionId := GetTransactionIdFromRequest(r)
+
 	p, found, err := peopleDriver.Read(uuid)
 
 	w.Header().Add("Content-Type", "application/json")
 
 	if err != nil {
-		log.Printf("ERROR Error on read=%v\n", err)
+		log.Errorf("Error on read=%v\n", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -145,7 +153,7 @@ func peopleRead(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 
 	if err := enc.Encode(p); err != nil {
-		log.Printf("ERROR Error on json encoding=%v\n", err)
+		log.Errorf("Error on json encoding=%v\n", err)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
