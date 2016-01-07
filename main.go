@@ -57,7 +57,8 @@ func runServer(neoURL string, port string, batchSize int, graphiteTCPAddress str
 	ensureIndex(db, "Concept", "uuid")
 	ensureIndex(db, "Person", "uuid")
 
-	peopleDriver = NewPeopleCypherDriver(neocypherrunner.NewBatchCypherRunner(db, batchSize))
+	batchRunner := neocypherrunner.NewBatchCypherRunner(stringerDb{db}, batchSize)
+	peopleDriver = NewPeopleCypherDriver(batchRunner)
 
 	outputMetricsIfRequired(graphiteTCPAddress, graphitePrefix, logMetrics)
 
@@ -65,9 +66,15 @@ func runServer(neoURL string, port string, batchSize int, graphiteTCPAddress str
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
 	r.HandleFunc("/people/{uuid}", peopleRead).Methods("GET")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
-		"Checks for accessing neo4j", setUpHealthCheck(db, neoURL)))
+		"Checks for accessing neo4j", setUpHealthCheck(batchRunner, neoURL)))
 	r.HandleFunc("/ping", ping)
 	http.ListenAndServe(":"+port, HttpMetricsHandler(handlers.CombinedLoggingHandler(os.Stdout, r)))
+}
+
+type stringerDb struct{ *neoism.Database }
+
+func (sdb stringerDb) String() string {
+	return sdb.Url
 }
 
 func ensureIndex(db *neoism.Database, label string, property string) {
