@@ -66,7 +66,7 @@ func runServer(neoURL string, port string, batchSize int, graphiteTCPAddress str
 	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
 	r.HandleFunc("/people/{uuid}", peopleRead).Methods("GET")
 	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
-		"Checks for accessing neo4j", setUpHealthCheck(batchRunner, neoURL)))
+		"Checks for accessing neo4j", setUpHealthCheck(batchRunner)))
 	r.HandleFunc("/ping", ping)
 	http.ListenAndServe(":"+port, HttpMetricsHandler(handlers.CombinedLoggingHandler(os.Stdout, r)))
 }
