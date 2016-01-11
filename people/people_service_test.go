@@ -100,7 +100,7 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 	cleanUp(t, uuid)
 }
 
-func getPeopleCypherDriver(t *testing.T) PeopleCypherDriver {
+func getPeopleCypherDriver(t *testing.T) CypherDriver {
 	assert := assert.New(t)
 	url := os.Getenv("NEO4J_TEST_URL")
 	if url == "" {
@@ -109,7 +109,7 @@ func getPeopleCypherDriver(t *testing.T) PeopleCypherDriver {
 
 	db, err := neoism.Connect(url)
 	assert.NoError(err, "Failed to connect to Neo4j")
-	return NewPeopleCypherDriver(neoutils.StringerDb{db})
+	return NewCypherDriver(neoutils.StringerDb{db})
 }
 
 func readPersonForUUIDAndCheckFieldsMatch(t *testing.T, uuid string, expectedPerson person) {
