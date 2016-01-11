@@ -1,36 +1,25 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/Financial-Times/go-fthealth/v1a"
-	"github.com/Financial-Times/neo-cypher-runner-go"
-	log "github.com/Sirupsen/logrus"
-	"github.com/cyberdelia/go-metrics-graphite"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/jawher/mow.cli"
-	"github.com/jmcvetta/neoism"
-	"github.com/rcrowley/go-metrics"
-	"io"
-	standardLog "log"
-	"net"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"time"
-)
 
-var peopleDriver PeopleDriver
+	"github.com/Financial-Times/base-ft-rw-app-go"
+	"github.com/Financial-Times/neo-cypher-runner-go"
+	"github.com/Financial-Times/neo-utils-go"
+	"github.com/Financial-Times/people-rw-neo4j/people"
+	log "github.com/Sirupsen/logrus"
+	"github.com/jawher/mow.cli"
+	"github.com/jmcvetta/neoism"
+)
 
 func main() {
 	log.SetLevel(log.InfoLevel)
-	//TODO - log formatting?
 	log.Infof("Application started with args %s", os.Args)
 
 	app := cli.App("people-rw-neo4j", "A RESTful API for managing People in neo4j")
 	neoURL := app.StringOpt("neo-url", "http://localhost:7474/db/data", "neo4j endpoint URL")
-	port := app.StringOpt("port", "8080", "Port to listen on")
+	port := app.IntOpt("port", 8080, "Port to listen on")
 	batchSize := app.IntOpt("batchSize", 1024, "Maximum number of statements to execute per batch")
 	graphiteTCPAddress := app.StringOpt("graphiteTCPAddress", "",
 		"Graphite TCP address, e.g. graphite.ft.com:2003. Leave as default if you do NOT want to output to graphite (e.g. if running locally)")
@@ -39,149 +28,29 @@ func main() {
 	logMetrics := app.BoolOpt("logMetrics", false, "Whether to log metrics. Set to true if running locally and you want metrics output")
 
 	app.Action = func() {
-		runServer(*neoURL, *port, *batchSize, *graphiteTCPAddress, *graphitePrefix, *logMetrics)
+		db, err := neoism.Connect(*neoURL)
+		if err != nil {
+			log.Errorf("Could not connect to neo4j, error=[%s]\n", err)
+		}
+
+		neoutils.EnsureIndex(db, "Thing", "uuid")
+		neoutils.EnsureIndex(db, "Concept", "uuid")
+		neoutils.EnsureIndex(db, "Person", "uuid")
+
+		batchRunner := neocypherrunner.NewBatchCypherRunner(neoutils.StringerDb{db}, *batchSize)
+		peopleDriver := people.NewCypherDriver(batchRunner)
+
+		baseftrwapp.OutputMetricsIfRequired(*graphiteTCPAddress, *graphitePrefix, *logMetrics)
+
+		engs := map[string]baseftrwapp.Service{
+			"people": peopleDriver,
+		}
+
+		baseftrwapp.RunServer(engs,
+			"ft-people_rw_neo4j",
+			"Writes 'people' to Neo4j, usually as part of a bulk upload done on a schedule",
+			*port)
 	}
 
 	app.Run(os.Args)
-}
-
-func runServer(neoURL string, port string, batchSize int, graphiteTCPAddress string,
-	graphitePrefix string, logMetrics bool) {
-
-	db, err := neoism.Connect(neoURL)
-	if err != nil {
-		log.Errorf("Could not connect to neo4j, error=[%s]\n", err)
-	}
-
-	ensureIndex(db, "Thing", "uuid")
-	ensureIndex(db, "Concept", "uuid")
-	ensureIndex(db, "Person", "uuid")
-
-	batchRunner := neocypherrunner.NewBatchCypherRunner(stringerDb{db}, batchSize)
-	peopleDriver = NewPeopleCypherDriver(batchRunner)
-
-	outputMetricsIfRequired(graphiteTCPAddress, graphitePrefix, logMetrics)
-
-	r := mux.NewRouter()
-	r.HandleFunc("/people/{uuid}", peopleWrite).Methods("PUT")
-	r.HandleFunc("/people/{uuid}", peopleRead).Methods("GET")
-	r.HandleFunc("/__health", v1a.Handler("PeopleReadWriteNeo4j Healthchecks",
-		"Checks for accessing neo4j", setUpHealthCheck(batchRunner)))
-	r.HandleFunc("/ping", ping)
-	http.ListenAndServe(":"+port, HttpMetricsHandler(handlers.CombinedLoggingHandler(os.Stdout, r)))
-}
-
-type stringerDb struct{ *neoism.Database }
-
-func (sdb stringerDb) String() string {
-	return sdb.Url
-}
-
-func ensureIndex(db *neoism.Database, label string, property string) {
-
-	personIndexes, err := db.Indexes(label)
-
-	if err != nil {
-		log.Errorf("Error on creating index=%v\n", err)
-	}
-
-	var indexFound bool
-
-	for _, index := range personIndexes {
-		if len(index.PropertyKeys) == 1 && index.PropertyKeys[0] == property {
-			indexFound = true
-			break
-		}
-	}
-	if !indexFound {
-		log.Infof("Creating index for person for neo4j instance at %s\n", db.Url)
-		db.CreateIndex(label, property)
-	}
-
-}
-
-func outputMetricsIfRequired(graphiteTCPAddress string, graphitePrefix string, logMetrics bool) {
-	if graphiteTCPAddress != "" {
-		addr, _ := net.ResolveTCPAddr("tcp", graphiteTCPAddress)
-		go graphite.Graphite(metrics.DefaultRegistry, 1*time.Minute, graphitePrefix, addr)
-	}
-	if logMetrics { //useful locally
-		//messy use of the 'standard' log package here as this method takes the log struct, not an interface, so can't use logrus.Logger
-		go metrics.Log(metrics.DefaultRegistry, 60*time.Second, standardLog.New(os.Stdout, "metrics", standardLog.Lmicroseconds))
-	}
-}
-
-func ping(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "pong")
-}
-
-func peopleWrite(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["uuid"]
-	//transactionId := GetTransactionIdFromRequest(r)
-	p, err := parsePerson(r.Body)
-	if err != nil || p.UUID != uuid {
-		log.Errorf("Error on parse=%v\n", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	err = peopleDriver.Write(p)
-	if err != nil {
-		log.Errorf("Error on write=%v\n", err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	}
-	//Not necessary for a 200 to be returned, but for PUT requests, if don't specify, don't see 200 status logged in request logs
-	w.WriteHeader(http.StatusOK)
-}
-
-func peopleRead(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uuid := vars["uuid"]
-
-	//transactionId := GetTransactionIdFromRequest(r)
-
-	p, found, err := peopleDriver.Read(uuid)
-
-	w.Header().Add("Content-Type", "application/json")
-
-	if err != nil {
-		log.Errorf("Error on read=%v\n", err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	}
-
-	if !found {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	enc := json.NewEncoder(w)
-
-	if err := enc.Encode(p); err != nil {
-		log.Errorf("Error on json encoding=%v\n", err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	}
-}
-
-func parsePerson(jsonInput io.Reader) (person, error) {
-	dec := json.NewDecoder(jsonInput)
-	var p person
-	err := dec.Decode(&p)
-	return p, err
-}
-
-func HttpMetricsHandler(h http.Handler) http.Handler {
-	return httpMetricsHandler{h}
-}
-
-type httpMetricsHandler struct {
-	handler http.Handler
-}
-
-func (h httpMetricsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	t := metrics.GetOrRegisterTimer(req.Method, metrics.DefaultRegistry)
-	t.Time(func() { h.handler.ServeHTTP(w, req) })
 }

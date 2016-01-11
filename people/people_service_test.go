@@ -1,16 +1,18 @@
 // +build !jenkins
 
-package main
+package people
 
 import (
-	"github.com/jmcvetta/neoism"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	"os"
 	"testing"
+
+	"github.com/Financial-Times/base-ft-rw-app-go"
+	"github.com/Financial-Times/neo-utils-go"
+	"github.com/jmcvetta/neoism"
+	"github.com/stretchr/testify/assert"
 )
 
-var ctx = context.Background()
+var peopleDriver baseftrwapp.Service
 
 func TestDelete(t *testing.T) {
 	assert := assert.New(t)
@@ -43,7 +45,7 @@ func TestCreateAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 
-	readPersonForUuidAndCheckFieldsMatch(t, uuid, personToWrite)
+	readPersonForUUIDAndCheckFieldsMatch(t, uuid, personToWrite)
 
 	cleanUp(t, uuid)
 }
@@ -58,7 +60,7 @@ func TestCreateHandlesSpecialCharacters(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 
-	readPersonForUuidAndCheckFieldsMatch(t, uuid, personToWrite)
+	readPersonForUUIDAndCheckFieldsMatch(t, uuid, personToWrite)
 
 	cleanUp(t, uuid)
 }
@@ -73,7 +75,7 @@ func TestCreateNotAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 
-	readPersonForUuidAndCheckFieldsMatch(t, uuid, personToWrite)
+	readPersonForUUIDAndCheckFieldsMatch(t, uuid, personToWrite)
 
 	cleanUp(t, uuid)
 }
@@ -87,13 +89,13 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
-	readPersonForUuidAndCheckFieldsMatch(t, uuid, personToWrite)
+	readPersonForUUIDAndCheckFieldsMatch(t, uuid, personToWrite)
 
 	updatedPerson := person{UUID: uuid, Name: "Test",
 		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
 
 	assert.NoError(peopleDriver.Write(updatedPerson), "Failed to write updated person")
-	readPersonForUuidAndCheckFieldsMatch(t, uuid, updatedPerson)
+	readPersonForUUIDAndCheckFieldsMatch(t, uuid, updatedPerson)
 
 	cleanUp(t, uuid)
 }
@@ -107,10 +109,10 @@ func getPeopleCypherDriver(t *testing.T) PeopleCypherDriver {
 
 	db, err := neoism.Connect(url)
 	assert.NoError(err, "Failed to connect to Neo4j")
-	return NewPeopleCypherDriver(stringerDb{db})
+	return NewPeopleCypherDriver(neoutils.StringerDb{db})
 }
 
-func readPersonForUuidAndCheckFieldsMatch(t *testing.T, uuid string, expectedPerson person) {
+func readPersonForUUIDAndCheckFieldsMatch(t *testing.T, uuid string, expectedPerson person) {
 	assert := assert.New(t)
 	storedPerson, found, err := peopleDriver.Read(uuid)
 

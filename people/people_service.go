@@ -1,37 +1,35 @@
-package main
+package people
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/neo-cypher-runner-go"
-	log "github.com/Sirupsen/logrus"
 	"github.com/jmcvetta/neoism"
 )
 
-type PeopleDriver interface {
-	Write(p person) error
-	Read(uuid string) (p person, found bool, err error)
-	Delete(uuid string) (found bool, err error)
-}
-
-type PeopleCypherDriver struct {
+type CypherDriver struct {
 	cypherRunner neocypherrunner.CypherRunner
 }
 
-func NewPeopleCypherDriver(cypherRunner neocypherrunner.CypherRunner) PeopleCypherDriver {
-	return PeopleCypherDriver{cypherRunner}
+func NewCypherDriver(cypherRunner neocypherrunner.CypherRunner) CypherDriver {
+	return CypherDriver{cypherRunner}
 }
 
-func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
+func (pcd CypherDriver) Read(uuid string) (interface{}, bool, error) {
 	results := []struct {
 		UUID              string `json:"uuid"`
-		Name              string `json: "name"`
-		BirthYear         int    `json: "birthYear"`
-		Salutation        string `json: "salutation"`
-		FactsetIdentifier string `json: "factsetIdentifier"`
+		Name              string `json:"name"`
+		BirthYear         int    `json:"birthYear"`
+		Salutation        string `json:"salutation"`
+		FactsetIdentifier string `json:"factsetIdentifier"`
 	}{}
 
 	query := &neoism.CypherQuery{
-		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid 
-		as uuid, n.name as name, 
+		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid
+		as uuid, n.name as name,
 		n.factsetIdentifier as factsetIdentifier,
 		n.birthYear as birthYear,
 		n.salutation as salutation`,
@@ -40,8 +38,6 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 		},
 		Result: &results,
 	}
-
-	log.Debugf("Executing query %s", query)
 
 	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
@@ -70,7 +66,9 @@ func (pcd PeopleCypherDriver) Read(uuid string) (person, bool, error) {
 
 }
 
-func (pcd PeopleCypherDriver) Write(p person) error {
+func (pcd CypherDriver) Write(thing interface{}) error {
+
+	p := thing.(person)
 
 	params := map[string]interface{}{
 		"uuid": p.UUID,
@@ -95,7 +93,7 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 	}
 
 	query := &neoism.CypherQuery{
-		Statement: `MERGE (n:Thing {uuid: {uuid}}) 
+		Statement: `MERGE (n:Thing {uuid: {uuid}})
 					set n={allprops}
 					set n :Concept
 					set n :Person
@@ -110,7 +108,7 @@ func (pcd PeopleCypherDriver) Write(p person) error {
 
 }
 
-func (pcd PeopleCypherDriver) Delete(uuid string) (bool, error) {
+func (pcd CypherDriver) Delete(uuid string) (bool, error) {
 	clearNode := &neoism.CypherQuery{
 		Statement: `
 			MATCH (p:Thing {uuid: {uuid}})
@@ -153,6 +151,52 @@ func (pcd PeopleCypherDriver) Delete(uuid string) (bool, error) {
 	}
 
 	return deleted, err
+}
+
+func (pcd CypherDriver) DecodeJSON(dec *json.Decoder) (interface{}, string, error) {
+	p := person{}
+	err := dec.Decode(&p)
+	return p, p.UUID, err
+
+}
+
+func (pcd CypherDriver) Check() (check v1a.Check) {
+	type hcUUIDResult struct {
+		UUID string `json:"uuid"`
+	}
+
+	checker := func() (string, error) {
+		var result []hcUUIDResult
+
+		query := &neoism.CypherQuery{
+			Statement: `MATCH (n:Person)
+					return  n.uuid as uuid
+					limit 1`,
+			Result: &result,
+		}
+
+		err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+
+		if err != nil {
+			return "", err
+		}
+		if len(result) == 0 {
+			return "", errors.New("No Person found")
+		}
+		if result[0].UUID == "" {
+			return "", errors.New("UUID not set")
+		}
+		return fmt.Sprintf("Found a person with a valid uuid = %v", result[0].UUID), nil
+	}
+
+	return v1a.Check{
+		BusinessImpact:   "Cannot read/write people via this writer",
+		Name:             "Check connectivity to Neo4j - neoUrl is a parameter in hieradata for this service",
+		PanicGuide:       "TODO - write panic guide",
+		Severity:         1,
+		TechnicalSummary: fmt.Sprintf("Cannot connect to Neo4j instance %s with at least one person loaded in it", pcd.cypherRunner),
+		Checker:          checker,
+	}
 }
 
 const (

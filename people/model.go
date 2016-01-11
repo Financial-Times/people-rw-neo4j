@@ -1,4 +1,4 @@
-package main
+package people
 
 type person struct {
 	BirthYear   int          `json:"birthYear,omitempty"`
