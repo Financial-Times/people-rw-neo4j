@@ -208,6 +208,26 @@ func (pcd CypherDriver) Check() (check v1a.Check) {
 	}
 }
 
+func (pcd CypherDriver) Count() (int, error) {
+
+	results := []struct {
+		Count int `json:"c"`
+	}{}
+
+	query := &neoism.CypherQuery{
+		Statement: `MATCH (n:Person) return count(n) as c`,
+		Result:    &results,
+	}
+
+	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return results[0].Count, nil
+}
+
 const (
 	fsAuthority = "http://api.ft.com/system/FACTSET-PPL"
 )
