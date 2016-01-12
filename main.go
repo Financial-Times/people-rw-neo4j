@@ -47,7 +47,7 @@ func main() {
 		}
 
 		baseftrwapp.RunServer(engs,
-			"ft-people_rw_neo4j",
+			"ft-people_rw_neo4j ServiceModule",
 			"Writes 'people' to Neo4j, usually as part of a bulk upload done on a schedule",
 			*port)
 	}
