@@ -109,7 +109,7 @@ func getPeopleCypherDriver(t *testing.T) CypherDriver {
 
 	db, err := neoism.Connect(url)
 	assert.NoError(err, "Failed to connect to Neo4j")
-	return NewCypherDriver(neoutils.StringerDb{db})
+	return NewCypherDriver(neoutils.StringerDb{db}, db)
 }
 
 func readPersonForUUIDAndCheckFieldsMatch(t *testing.T, uuid string, expectedPerson person) {

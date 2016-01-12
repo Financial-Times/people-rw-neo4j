@@ -7,15 +7,24 @@ import (
 
 	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/neo-cypher-runner-go"
+	"github.com/Financial-Times/neo-utils-go"
 	"github.com/jmcvetta/neoism"
 )
 
 type CypherDriver struct {
 	cypherRunner neocypherrunner.CypherRunner
+	indexManager neoutils.IndexManager
 }
 
-func NewCypherDriver(cypherRunner neocypherrunner.CypherRunner) CypherDriver {
-	return CypherDriver{cypherRunner}
+func NewCypherDriver(cypherRunner neocypherrunner.CypherRunner, indexManager neoutils.IndexManager) CypherDriver {
+	return CypherDriver{cypherRunner, indexManager}
+}
+
+func (pcd CypherDriver) Initialise() error {
+	return neoutils.EnsureIndexes(pcd.indexManager, map[string]string{
+		"Thing":   "uuid",
+		"Concept": "uuid",
+		"Person":  "uuid"})
 }
 
 func (pcd CypherDriver) Read(uuid string) (interface{}, bool, error) {

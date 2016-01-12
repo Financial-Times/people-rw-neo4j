@@ -33,12 +33,9 @@ func main() {
 			log.Errorf("Could not connect to neo4j, error=[%s]\n", err)
 		}
 
-		neoutils.EnsureIndex(db, "Thing", "uuid")
-		neoutils.EnsureIndex(db, "Concept", "uuid")
-		neoutils.EnsureIndex(db, "Person", "uuid")
-
 		batchRunner := neocypherrunner.NewBatchCypherRunner(neoutils.StringerDb{db}, *batchSize)
-		peopleDriver := people.NewCypherDriver(batchRunner)
+		peopleDriver := people.NewCypherDriver(batchRunner, db)
+		peopleDriver.Initialise()
 
 		baseftrwapp.OutputMetricsIfRequired(*graphiteTCPAddress, *graphitePrefix, *logMetrics)
 
