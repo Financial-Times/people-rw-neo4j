@@ -29,8 +29,9 @@ func TestDelete(t *testing.T) {
 	assert.True(found, "Didn't manage to delete person for uuid %", uuid)
 	assert.NoError(err, "Error deleting person for uuid %s", uuid)
 
-	_, found, err = peopleDriver.Read(uuid)
+	p, found, err := peopleDriver.Read(uuid)
 
+	assert.Equal(person{}, p, "Found person %s who should have been deleted", p)
 	assert.False(found, "Found person for uuid %s who should have been deleted", uuid)
 	assert.NoError(err, "Error trying to find person for uuid %s", uuid)
 }
