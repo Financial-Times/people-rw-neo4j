@@ -2,10 +2,7 @@ package people
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 
-	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/neo-cypher-runner-go"
 	"github.com/Financial-Times/neo-utils-go"
 	"github.com/jmcvetta/neoism"
@@ -169,43 +166,8 @@ func (pcd CypherDriver) DecodeJSON(dec *json.Decoder) (interface{}, string, erro
 
 }
 
-func (pcd CypherDriver) Check() (check v1a.Check) {
-	type hcUUIDResult struct {
-		UUID string `json:"uuid"`
-	}
-
-	checker := func() (string, error) {
-		var result []hcUUIDResult
-
-		query := &neoism.CypherQuery{
-			Statement: `MATCH (n:Person)
-					return  n.uuid as uuid
-					limit 1`,
-			Result: &result,
-		}
-
-		err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
-
-		if err != nil {
-			return "", err
-		}
-		if len(result) == 0 {
-			return "", errors.New("No Person found")
-		}
-		if result[0].UUID == "" {
-			return "", errors.New("UUID not set")
-		}
-		return fmt.Sprintf("Found a person with a valid uuid = %v", result[0].UUID), nil
-	}
-
-	return v1a.Check{
-		BusinessImpact:   "Cannot read/write people via this writer",
-		Name:             "Check connectivity to Neo4j - neoUrl is a parameter in hieradata for this service",
-		PanicGuide:       "TODO - write panic guide",
-		Severity:         1,
-		TechnicalSummary: fmt.Sprintf("Cannot connect to Neo4j instance %s with at least one person loaded in it", pcd.cypherRunner),
-		Checker:          checker,
-	}
+func (pcd CypherDriver) Check() error {
+	return neoutils.Check(pcd.cypherRunner)
 }
 
 func (pcd CypherDriver) Count() (int, error) {

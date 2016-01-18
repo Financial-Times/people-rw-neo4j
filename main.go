@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	_ "net/http/pprof"
 	"os"
 
 	"github.com/Financial-Times/base-ft-rw-app-go"
+	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/neo-cypher-runner-go"
 	"github.com/Financial-Times/neo-utils-go"
 	"github.com/Financial-Times/people-rw-neo4j/people"
@@ -43,11 +45,26 @@ func main() {
 			"people": peopleDriver,
 		}
 
+		var checks []v1a.Check
+		for _, e := range engs {
+			checks = append(checks, makeCheck(e, batchRunner))
+		}
+
 		baseftrwapp.RunServer(engs,
-			"ft-people_rw_neo4j ServiceModule",
-			"Writes 'people' to Neo4j, usually as part of a bulk upload done on a schedule",
+			v1a.Handler("ft-people_rw_neo4j ServiceModule", "Writes 'people' to Neo4j, usually as part of a bulk upload done on a schedule", checks...),
 			*port)
 	}
 
 	app.Run(os.Args)
+}
+
+func makeCheck(service baseftrwapp.Service, cr neocypherrunner.CypherRunner) v1a.Check {
+	return v1a.Check{
+		BusinessImpact:   "Cannot read/write people via this writer",
+		Name:             "Check connectivity to Neo4j - neoUrl is a parameter in hieradata for this service",
+		PanicGuide:       "TODO - write panic guide",
+		Severity:         1,
+		TechnicalSummary: fmt.Sprintf("Cannot connect to Neo4j instance %s with at least one person loaded in it", cr),
+		Checker:          func() (string, error) { return "", service.Check() },
+	}
 }
