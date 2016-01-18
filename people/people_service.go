@@ -3,17 +3,16 @@ package people
 import (
 	"encoding/json"
 
-	"github.com/Financial-Times/neo-cypher-runner-go"
 	"github.com/Financial-Times/neo-utils-go"
 	"github.com/jmcvetta/neoism"
 )
 
 type service struct {
-	cypherRunner neocypherrunner.CypherRunner
+	cypherRunner neoutils.CypherRunner
 	indexManager neoutils.IndexManager
 }
 
-func NewCypherPeopleService(cypherRunner neocypherrunner.CypherRunner, indexManager neoutils.IndexManager) service {
+func NewCypherPeopleService(cypherRunner neoutils.CypherRunner, indexManager neoutils.IndexManager) service {
 	return service{cypherRunner, indexManager}
 }
 

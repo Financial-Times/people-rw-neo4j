@@ -7,7 +7,6 @@ import (
 
 	"github.com/Financial-Times/base-ft-rw-app-go"
 	"github.com/Financial-Times/go-fthealth/v1a"
-	"github.com/Financial-Times/neo-cypher-runner-go"
 	"github.com/Financial-Times/neo-utils-go"
 	"github.com/Financial-Times/people-rw-neo4j/people"
 	log "github.com/Sirupsen/logrus"
@@ -35,7 +34,7 @@ func main() {
 			log.Errorf("Could not connect to neo4j, error=[%s]\n", err)
 		}
 
-		batchRunner := neocypherrunner.NewBatchCypherRunner(neoutils.StringerDb{db}, *batchSize)
+		batchRunner := neoutils.NewBatchCypherRunner(neoutils.StringerDb{db}, *batchSize)
 		peopleDriver := people.NewCypherPeopleService(batchRunner, db)
 		peopleDriver.Initialise()
 
@@ -58,7 +57,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func makeCheck(service baseftrwapp.Service, cr neocypherrunner.CypherRunner) v1a.Check {
+func makeCheck(service baseftrwapp.Service, cr neoutils.CypherRunner) v1a.Check {
 	return v1a.Check{
 		BusinessImpact:   "Cannot read/write people via this writer",
 		Name:             "Check connectivity to Neo4j - neoUrl is a parameter in hieradata for this service",
