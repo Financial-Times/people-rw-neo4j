@@ -101,6 +101,13 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 	cleanUp(t, uuid)
 }
 
+func TestConnectivityCheck(t *testing.T) {
+	assert := assert.New(t)
+	peopleDriver = getPeopleCypherDriver(t)
+	err := peopleDriver.Check()
+	assert.NoError(err, "Unexpected error on connectivity check")
+}
+
 func getPeopleCypherDriver(t *testing.T) CypherDriver {
 	assert := assert.New(t)
 	url := os.Getenv("NEO4J_TEST_URL")
