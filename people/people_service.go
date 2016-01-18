@@ -8,23 +8,23 @@ import (
 	"github.com/jmcvetta/neoism"
 )
 
-type CypherDriver struct {
+type service struct {
 	cypherRunner neocypherrunner.CypherRunner
 	indexManager neoutils.IndexManager
 }
 
-func NewCypherDriver(cypherRunner neocypherrunner.CypherRunner, indexManager neoutils.IndexManager) CypherDriver {
-	return CypherDriver{cypherRunner, indexManager}
+func NewCypherPeopleService(cypherRunner neocypherrunner.CypherRunner, indexManager neoutils.IndexManager) service {
+	return service{cypherRunner, indexManager}
 }
 
-func (pcd CypherDriver) Initialise() error {
-	return neoutils.EnsureIndexes(pcd.indexManager, map[string]string{
+func (s service) Initialise() error {
+	return neoutils.EnsureIndexes(s.indexManager, map[string]string{
 		"Thing":   "uuid",
 		"Concept": "uuid",
 		"Person":  "uuid"})
 }
 
-func (pcd CypherDriver) Read(uuid string) (interface{}, bool, error) {
+func (s service) Read(uuid string) (interface{}, bool, error) {
 	results := []struct {
 		UUID              string `json:"uuid"`
 		Name              string `json:"name"`
@@ -45,7 +45,7 @@ func (pcd CypherDriver) Read(uuid string) (interface{}, bool, error) {
 		Result: &results,
 	}
 
-	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+	err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
 	if err != nil {
 		return person{}, false, err
@@ -72,7 +72,7 @@ func (pcd CypherDriver) Read(uuid string) (interface{}, bool, error) {
 
 }
 
-func (pcd CypherDriver) Write(thing interface{}) error {
+func (pcd service) Write(thing interface{}) error {
 
 	p := thing.(person)
 
@@ -114,7 +114,7 @@ func (pcd CypherDriver) Write(thing interface{}) error {
 
 }
 
-func (pcd CypherDriver) Delete(uuid string) (bool, error) {
+func (s service) Delete(uuid string) (bool, error) {
 	clearNode := &neoism.CypherQuery{
 		Statement: `
 			MATCH (p:Thing {uuid: {uuid}})
@@ -144,7 +144,7 @@ func (pcd CypherDriver) Delete(uuid string) (bool, error) {
 		},
 	}
 
-	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{clearNode, removeNodeIfUnused})
+	err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{clearNode, removeNodeIfUnused})
 
 	s1, err := clearNode.Stats()
 	if err != nil {
@@ -159,18 +159,17 @@ func (pcd CypherDriver) Delete(uuid string) (bool, error) {
 	return deleted, err
 }
 
-func (pcd CypherDriver) DecodeJSON(dec *json.Decoder) (interface{}, string, error) {
+func (s service) DecodeJSON(dec *json.Decoder) (interface{}, string, error) {
 	p := person{}
 	err := dec.Decode(&p)
 	return p, p.UUID, err
-
 }
 
-func (pcd CypherDriver) Check() error {
-	return neoutils.Check(pcd.cypherRunner)
+func (s service) Check() error {
+	return neoutils.Check(s.cypherRunner)
 }
 
-func (pcd CypherDriver) Count() (int, error) {
+func (s service) Count() (int, error) {
 
 	results := []struct {
 		Count int `json:"c"`
@@ -181,7 +180,7 @@ func (pcd CypherDriver) Count() (int, error) {
 		Result:    &results,
 	}
 
-	err := pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+	err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
 	if err != nil {
 		return 0, err
