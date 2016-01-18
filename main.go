@@ -36,7 +36,7 @@ func main() {
 		}
 
 		batchRunner := neocypherrunner.NewBatchCypherRunner(neoutils.StringerDb{db}, *batchSize)
-		peopleDriver := people.NewCypherDriver(batchRunner, db)
+		peopleDriver := people.NewCypherPeopleService(batchRunner, db)
 		peopleDriver.Initialise()
 
 		baseftrwapp.OutputMetricsIfRequired(*graphiteTCPAddress, *graphitePrefix, *logMetrics)

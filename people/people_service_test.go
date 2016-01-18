@@ -108,7 +108,7 @@ func TestConnectivityCheck(t *testing.T) {
 	assert.NoError(err, "Unexpected error on connectivity check")
 }
 
-func getPeopleCypherDriver(t *testing.T) CypherDriver {
+func getPeopleCypherDriver(t *testing.T) service {
 	assert := assert.New(t)
 	url := os.Getenv("NEO4J_TEST_URL")
 	if url == "" {
@@ -117,7 +117,7 @@ func getPeopleCypherDriver(t *testing.T) CypherDriver {
 
 	db, err := neoism.Connect(url)
 	assert.NoError(err, "Failed to connect to Neo4j")
-	return NewCypherDriver(neoutils.StringerDb{db}, db)
+	return NewCypherPeopleService(neoutils.StringerDb{db}, db)
 }
 
 func readPersonForUUIDAndCheckFieldsMatch(t *testing.T, uuid string, expectedPerson person) {
