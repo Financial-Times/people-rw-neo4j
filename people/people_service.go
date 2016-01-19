@@ -12,12 +12,14 @@ type service struct {
 	indexManager neoutils.IndexManager
 }
 
+// NewCypherPeopleService provides functions for create, update, delete operations on people in Neo4j,
+// plus other utility functions needed for a service
 func NewCypherPeopleService(cypherRunner neoutils.CypherRunner, indexManager neoutils.IndexManager) service {
 	return service{cypherRunner, indexManager}
 }
 
 func (s service) Initialise() error {
-	return neoutils.EnsureIndexes(s.indexManager, map[string]string{
+	return neoutils.EnsureConstraints(s.indexManager, map[string]string{
 		"Thing":   "uuid",
 		"Concept": "uuid",
 		"Person":  "uuid"})
@@ -71,7 +73,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 
 }
 
-func (pcd service) Write(thing interface{}) error {
+func (s service) Write(thing interface{}) error {
 
 	p := thing.(person)
 
@@ -109,7 +111,7 @@ func (pcd service) Write(thing interface{}) error {
 		},
 	}
 
-	return pcd.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+	return s.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
 
 }
 
