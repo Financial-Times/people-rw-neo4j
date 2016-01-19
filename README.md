@@ -34,6 +34,7 @@ This service is built and deployed via Jenkins.
 <a href="http://ftjen10085-lvpr-uk-p:8181/view/JOBS-people-rw-neo4j/job/people-rw-neo4j-deploy-prod/">Deploy to Prod job</a>
 
 The build works via git tags. To prepare a new release
+- update the version in /puppet/ft-people_rw_neo4j/Modulefile, e.g. to 0.0.12 (If you get a 400 error in your jenkins job you haven't updated this)
 - git tag that commit using `git tag 0.0.12`
 - `git push --tags`
 
