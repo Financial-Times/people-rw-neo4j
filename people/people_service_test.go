@@ -129,6 +129,31 @@ func readPersonForUUIDAndCheckFieldsMatch(t *testing.T, uuid string, expectedPer
 	assert.Equal(expectedPerson, storedPerson, "people should be the same")
 }
 
+func TestWritePrefLabelIsAlsoWrittenAndIsEqualToName(t *testing.T) {
+	assert := assert.New(t)
+	peopleDriver := getPeopleCypherDriver(t)
+	uuid := "12345"
+	personToWrite := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
+		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
+	peopleDriver.Write(personToWrite)
+
+	result := []struct {
+		PrefLabel string `json:"t.prefLabel"`
+	}{}
+
+	getPrefLabelQuery := &neoism.CypherQuery{
+		Statement: `
+				MATCH (t:Person {uuid:"12345"}) RETURN t.prefLabel
+				`,
+		Result: &result,
+	}
+
+	err := peopleDriver.cypherRunner.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
+	assert.NoError(err)
+	assert.Equal("Test", result[0].PrefLabel, "PrefLabel should be 'Test")
+	cleanUp(t, uuid)
+}
+
 func cleanUp(t *testing.T, uuid string) {
 	assert := assert.New(t)
 	found, err := peopleDriver.Delete(uuid)

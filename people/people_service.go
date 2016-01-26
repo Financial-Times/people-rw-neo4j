@@ -83,6 +83,7 @@ func (s service) Write(thing interface{}) error {
 
 	if p.Name != "" {
 		params["name"] = p.Name
+		params["prefLabel"] = p.Name
 	}
 
 	if p.BirthYear != 0 {
