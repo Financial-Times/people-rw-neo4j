@@ -3,6 +3,7 @@
 package people
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -21,7 +22,7 @@ func TestDelete(t *testing.T) {
 	peopleDriver = getPeopleCypherDriver(t)
 
 	personToDelete := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
-		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
+		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	assert.NoError(peopleDriver.Write(personToDelete), "Failed to write person")
 
@@ -42,7 +43,7 @@ func TestCreateAllValuesPresent(t *testing.T) {
 	peopleDriver = getPeopleCypherDriver(t)
 
 	personToWrite := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
-		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
+		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 
@@ -57,7 +58,7 @@ func TestCreateHandlesSpecialCharacters(t *testing.T) {
 	peopleDriver = getPeopleCypherDriver(t)
 
 	personToWrite := person{UUID: uuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr",
-		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
+		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 
@@ -87,7 +88,7 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 	peopleDriver = getPeopleCypherDriver(t)
 
 	personToWrite := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
-		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
+		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 	readPersonForUUIDAndCheckFieldsMatch(t, uuid, personToWrite)
@@ -129,13 +130,42 @@ func readPersonForUUIDAndCheckFieldsMatch(t *testing.T, uuid string, expectedPer
 	assert.Equal(expectedPerson, storedPerson, "people should be the same")
 }
 
+func TestWriteAliasesAreWrittenAndAreEqualToList(t *testing.T) {
+	assert := assert.New(t)
+	peopleDriver := getPeopleCypherDriver(t)
+	uuid := "12345"
+	personToWrite := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
+		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
+
+	peopleDriver.Write(personToWrite)
+
+	result := []struct {
+		Aliases []string `json:"t.aliases"`
+	}{}
+
+	getPrefLabelQuery := &neoism.CypherQuery{
+		Statement: `
+				MATCH (t:Person {uuid:"12345"}) RETURN t.aliases
+				`,
+		Result: &result,
+	}
+
+	err := peopleDriver.cypherRunner.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
+	assert.NoError(err)
+	assert.Equal("alias 1", result[0].Aliases[0], "PrefLabel should be 'alias 1")
+	cleanUp(t, uuid)
+}
+
 func TestWritePrefLabelIsAlsoWrittenAndIsEqualToName(t *testing.T) {
 	assert := assert.New(t)
 	peopleDriver := getPeopleCypherDriver(t)
 	uuid := "12345"
 	personToWrite := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
 		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}}
-	peopleDriver.Write(personToWrite)
+
+	storedPerson := peopleDriver.Write(personToWrite)
+
+	fmt.Printf("", storedPerson)
 
 	result := []struct {
 		PrefLabel string `json:"t.prefLabel"`

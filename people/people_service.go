@@ -27,11 +27,12 @@ func (s service) Initialise() error {
 
 func (s service) Read(uuid string) (interface{}, bool, error) {
 	results := []struct {
-		UUID              string `json:"uuid"`
-		Name              string `json:"name"`
-		BirthYear         int    `json:"birthYear"`
-		Salutation        string `json:"salutation"`
-		FactsetIdentifier string `json:"factsetIdentifier"`
+		UUID              string   `json:"uuid"`
+		Name              string   `json:"name"`
+		BirthYear         int      `json:"birthYear"`
+		Salutation        string   `json:"salutation"`
+		FactsetIdentifier string   `json:"factsetIdentifier"`
+		Aliases           []string `json:"aliases"`
 	}{}
 
 	query := &neoism.CypherQuery{
@@ -39,7 +40,8 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		as uuid, n.name as name,
 		n.factsetIdentifier as factsetIdentifier,
 		n.birthYear as birthYear,
-		n.salutation as salutation`,
+		n.salutation as salutation,
+		n.aliases as aliases`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
 		},
@@ -63,6 +65,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		Name:       result.Name,
 		BirthYear:  result.BirthYear,
 		Salutation: result.Salutation,
+		Aliases:    result.Aliases,
 	}
 
 	if result.FactsetIdentifier != "" {
@@ -98,6 +101,16 @@ func (s service) Write(thing interface{}) error {
 		if identifier.Authority == fsAuthority {
 			params["factsetIdentifier"] = identifier.IdentifierValue
 		}
+	}
+
+	var aliases []string
+
+	for _, alias := range p.Aliases {
+		aliases = append(aliases, alias)
+	}
+
+	if len(aliases) > 0 {
+		params["aliases"] = aliases
 	}
 
 	query := &neoism.CypherQuery{
