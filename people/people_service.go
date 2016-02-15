@@ -32,6 +32,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		BirthYear         int      `json:"birthYear"`
 		Salutation        string   `json:"salutation"`
 		FactsetIdentifier string   `json:"factsetIdentifier"`
+		TMEIdentifier     string   `json:"tmeIdentifier"`
 		Aliases           []string `json:"aliases"`
 	}{}
 
@@ -39,6 +40,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid
 		as uuid, n.name as name,
 		n.factsetIdentifier as factsetIdentifier,
+		n.tmeIdentifier as tmeIdentifier,
 		n.birthYear as birthYear,
 		n.salutation as salutation,
 		n.aliases as aliases`,
@@ -72,6 +74,10 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		p.Identifiers = append(p.Identifiers, identifier{fsAuthority, result.FactsetIdentifier})
 	}
 
+	if result.TMEIdentifier != "" {
+		p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, result.TMEIdentifier})
+	}
+
 	return p, true, nil
 
 }
@@ -100,6 +106,9 @@ func (s service) Write(thing interface{}) error {
 	for _, identifier := range p.Identifiers {
 		if identifier.Authority == fsAuthority {
 			params["factsetIdentifier"] = identifier.IdentifierValue
+		}
+		if identifier.Authority == tmeAuthority {
+			params["tmeIdentifier"] = identifier.IdentifierValue
 		}
 	}
 
@@ -206,4 +215,8 @@ func (s service) Count() (int, error) {
 
 const (
 	fsAuthority = "http://api.ft.com/system/FACTSET-PPL"
+)
+
+const (
+	tmeAuthority = "http://api.ft.com/system/TME"
 )
