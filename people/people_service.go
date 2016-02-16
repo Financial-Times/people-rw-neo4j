@@ -32,7 +32,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		BirthYear         int      `json:"birthYear"`
 		Salutation        string   `json:"salutation"`
 		FactsetIdentifier string   `json:"factsetIdentifier"`
-		TMEIdentifier     string   `json:"tmeIdentifier"`
+		TMEIdentifiers    []string `json:"tmeIdentifiers"`
 		Aliases           []string `json:"aliases"`
 	}{}
 
@@ -40,7 +40,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid
 		as uuid, n.name as name,
 		n.factsetIdentifier as factsetIdentifier,
-		n.tmeIdentifier as tmeIdentifier,
+		n.tmeIdentifiers as tmeIdentifiers,
 		n.birthYear as birthYear,
 		n.salutation as salutation,
 		n.aliases as aliases`,
@@ -74,8 +74,10 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		p.Identifiers = append(p.Identifiers, identifier{fsAuthority, result.FactsetIdentifier})
 	}
 
-	if result.TMEIdentifier != "" {
-		p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, result.TMEIdentifier})
+	if len(result.TMEIdentifiers) > 0 {
+		for _, tmeValue := range result.TMEIdentifiers {
+			p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, tmeValue})
+		}
 	}
 
 	return p, true, nil
@@ -103,13 +105,19 @@ func (s service) Write(thing interface{}) error {
 		params["salutation"] = p.Salutation
 	}
 
+	var tmeIdentifiers []string
+
 	for _, identifier := range p.Identifiers {
 		if identifier.Authority == fsAuthority {
 			params["factsetIdentifier"] = identifier.IdentifierValue
 		}
 		if identifier.Authority == tmeAuthority {
-			params["tmeIdentifier"] = identifier.IdentifierValue
+			tmeIdentifiers = append(tmeIdentifiers, identifier.IdentifierValue)
 		}
+	}
+
+	if len(tmeIdentifiers) > 0 {
+		params["tmeIdentifiers"] = tmeIdentifiers
 	}
 
 	var aliases []string
