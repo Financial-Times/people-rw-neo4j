@@ -74,10 +74,14 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		p.Identifiers = append(p.Identifiers, identifier{fsAuthority, result.FactsetIdentifier})
 	}
 
-	if len(result.TMEIdentifiers) > 0 {
-		for _, tmeValue := range result.TMEIdentifiers {
-			p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, tmeValue})
-		}
+	// if len(result.TMEIdentifiers) > 0 {
+	// 	for _, tmeValue := range result.TMEIdentifiers {
+	// 		p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, tmeValue})
+	// 	}
+	// }
+
+	for _, tmeValue := range result.TMEIdentifiers {
+		p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, tmeValue})
 	}
 
 	return p, true, nil
