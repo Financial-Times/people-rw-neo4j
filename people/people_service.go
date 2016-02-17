@@ -3,7 +3,7 @@ package people
 import (
 	"encoding/json"
 
-	"github.com/Financial-Times/neo-utils-go"
+	"github.com/Financial-Times/neo-utils-go/neoutils"
 	"github.com/jmcvetta/neoism"
 )
 
