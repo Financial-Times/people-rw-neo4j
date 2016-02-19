@@ -3,7 +3,7 @@ package people
 import (
 	"bytes"
 	"encoding/json"
-	"math/rand"
+	"fmt"
 
 	"github.com/Financial-Times/neo-utils-go/neoutils"
 	"github.com/jmcvetta/neoism"
@@ -13,8 +13,6 @@ type service struct {
 	cypherRunner neoutils.CypherRunner
 	indexManager neoutils.IndexManager
 }
-
-var letters = []rune("abcdefghijklmnopqrstuvwxyz")
 
 // NewCypherPeopleService provides functions for create, update, delete operations on people in Neo4j,
 // plus other utility functions needed for a service
@@ -61,7 +59,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 	result := results[0]
 
 	if len(result.Identifiers) == 1 && (result.Identifiers[0].IdentifierValue == "") {
-		result.Identifiers = make([]identifier, 0, 0)
+		result.Identifiers = []identifier{}
 	}
 
 	p := person{
@@ -80,7 +78,6 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 func (s service) Write(thing interface{}) error {
 
 	p := thing.(person)
-	// i := thing.(identifier)
 
 	params := map[string]interface{}{
 		"uuid": p.UUID,
@@ -126,18 +123,6 @@ func (s service) Write(thing interface{}) error {
 					set n :Concept
 					set n :Person `)
 
-	for _, identifier := range p.Identifiers {
-		if identifier.Authority == fsAuthority {
-			statement.WriteString("CREATE (i:Identifier:FactsetIdentifier{authority:'" + identifier.Authority + "', value:'" + identifier.IdentifierValue + "'}) CREATE (i)-[:IDENTIFIES]->(n) ")
-		}
-		//creates a sequence of letters of int length. Needed for cases where an entity has more than one tme id
-		variable := randSeq(3)
-
-		if identifier.Authority == tmeAuthority {
-			statement.WriteString("CREATE (" + variable + ":Identifier:TMEIdentifier{authority:'" + identifier.Authority + "', value:'" + identifier.IdentifierValue + "'}) CREATE (" + variable + ")-[:IDENTIFIES]->(n) ")
-		}
-	}
-
 	writeQuery := &neoism.CypherQuery{
 		Statement: statement.String(),
 		Parameters: map[string]interface{}{
@@ -147,6 +132,16 @@ func (s service) Write(thing interface{}) error {
 	}
 
 	queries = append(queries, writeQuery)
+
+	identifierLabels := map[string]string{
+		fsAuthority:  "FactsetIdentifier",
+		tmeAuthority: "TMEIdentifier",
+	}
+
+	for _, identifier := range p.Identifiers {
+		addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
+		queries = append(queries, addIdentifierQuery)
+	}
 
 	return s.cypherRunner.CypherBatch(queries)
 }
@@ -228,12 +223,20 @@ func (s service) Count() (int, error) {
 	return results[0].Count, nil
 }
 
-func randSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+func addIdentifierQuery(identifier identifier, uuid string, identifierLabel string) *neoism.CypherQuery {
+	statementTemplate := fmt.Sprintf(`MERGE (o:Thing {uuid:{uuid}})
+								CREATE (i:Identifier {value:{value} , authority:{authority}})
+								CREATE (o)<-[:IDENTIFIES]-(i)
+								set i : %s `, identifierLabel)
+	query := &neoism.CypherQuery{
+		Statement: statementTemplate,
+		Parameters: map[string]interface{}{
+			"uuid":      uuid,
+			"value":     identifier.IdentifierValue,
+			"authority": identifier.Authority,
+		},
 	}
-	return string(b)
+	return query
 }
 
 const (
