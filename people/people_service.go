@@ -1,7 +1,9 @@
 package people
 
 import (
+	"bytes"
 	"encoding/json"
+	"math/rand"
 
 	"github.com/Financial-Times/neo-utils-go/neoutils"
 	"github.com/jmcvetta/neoism"
@@ -11,6 +13,8 @@ type service struct {
 	cypherRunner neoutils.CypherRunner
 	indexManager neoutils.IndexManager
 }
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyz")
 
 // NewCypherPeopleService provides functions for create, update, delete operations on people in Neo4j,
 // plus other utility functions needed for a service
@@ -26,24 +30,18 @@ func (s service) Initialise() error {
 }
 
 func (s service) Read(uuid string) (interface{}, bool, error) {
-	results := []struct {
-		UUID              string   `json:"uuid"`
-		Name              string   `json:"name"`
-		BirthYear         int      `json:"birthYear"`
-		Salutation        string   `json:"salutation"`
-		FactsetIdentifier string   `json:"factsetIdentifier"`
-		TMEIdentifiers    []string `json:"tmeIdentifiers"`
-		Aliases           []string `json:"aliases"`
-	}{}
+	results := []person{}
 
 	query := &neoism.CypherQuery{
-		Statement: `MATCH (n:Person {uuid:{uuid}}) return n.uuid
-		as uuid, n.name as name,
-		n.factsetIdentifier as factsetIdentifier,
-		n.tmeIdentifiers as tmeIdentifiers,
-		n.birthYear as birthYear,
-		n.salutation as salutation,
-		n.aliases as aliases`,
+		Statement: `MATCH (p:Person {uuid:{uuid}})
+					OPTIONAL MATCH (p)<-[rel:IDENTIFIES]-(i:Identifier)
+					WITH p,collect({authority:i.authority, identifierValue:i.value}) as identifiers
+						return p.uuid as uuid,
+									 p.name as name,
+									 identifiers,
+									 p.birthYear as birthYear,
+									 p.salutation as salutation,
+									 p.aliases as aliases`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
 		},
@@ -62,26 +60,17 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 
 	result := results[0]
 
+	if len(result.Identifiers) == 1 && (result.Identifiers[0].IdentifierValue == "") {
+		result.Identifiers = make([]identifier, 0, 0)
+	}
+
 	p := person{
-		UUID:       result.UUID,
-		Name:       result.Name,
-		BirthYear:  result.BirthYear,
-		Salutation: result.Salutation,
-		Aliases:    result.Aliases,
-	}
-
-	if result.FactsetIdentifier != "" {
-		p.Identifiers = append(p.Identifiers, identifier{fsAuthority, result.FactsetIdentifier})
-	}
-
-	// if len(result.TMEIdentifiers) > 0 {
-	// 	for _, tmeValue := range result.TMEIdentifiers {
-	// 		p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, tmeValue})
-	// 	}
-	// }
-
-	for _, tmeValue := range result.TMEIdentifiers {
-		p.Identifiers = append(p.Identifiers, identifier{tmeAuthority, tmeValue})
+		UUID:        result.UUID,
+		Name:        result.Name,
+		BirthYear:   result.BirthYear,
+		Salutation:  result.Salutation,
+		Identifiers: result.Identifiers,
+		Aliases:     result.Aliases,
 	}
 
 	return p, true, nil
@@ -91,6 +80,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 func (s service) Write(thing interface{}) error {
 
 	p := thing.(person)
+	// i := thing.(identifier)
 
 	params := map[string]interface{}{
 		"uuid": p.UUID,
@@ -109,21 +99,6 @@ func (s service) Write(thing interface{}) error {
 		params["salutation"] = p.Salutation
 	}
 
-	var tmeIdentifiers []string
-
-	for _, identifier := range p.Identifiers {
-		if identifier.Authority == fsAuthority {
-			params["factsetIdentifier"] = identifier.IdentifierValue
-		}
-		if identifier.Authority == tmeAuthority {
-			tmeIdentifiers = append(tmeIdentifiers, identifier.IdentifierValue)
-		}
-	}
-
-	if len(tmeIdentifiers) > 0 {
-		params["tmeIdentifiers"] = tmeIdentifiers
-	}
-
 	var aliases []string
 
 	for _, alias := range p.Aliases {
@@ -134,28 +109,56 @@ func (s service) Write(thing interface{}) error {
 		params["aliases"] = aliases
 	}
 
-	query := &neoism.CypherQuery{
-		Statement: `MERGE (n:Thing {uuid: {uuid}})
-					set n={allprops}
-					set n :Concept
-					set n :Person
-		`,
+	deleteEntityRelationshipsQuery := &neoism.CypherQuery{
+		Statement: `MATCH (t:Thing {uuid:{uuid}})
+					OPTIONAL MATCH (i:Identifier)-[:IDENTIFIES]->(t)
+					DETACH DELETE i`,
 		Parameters: map[string]interface{}{
-			"uuid":     p.UUID,
-			"allprops": params,
+			"uuid": p.UUID,
 		},
 	}
 
-	return s.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+	queries := []*neoism.CypherQuery{deleteEntityRelationshipsQuery}
 
+	var statement bytes.Buffer
+	statement.WriteString(`MERGE (n:Thing{uuid: {uuid}})
+					set n={props}
+					set n :Concept
+					set n :Person `)
+
+	for _, identifier := range p.Identifiers {
+		if identifier.Authority == fsAuthority {
+			statement.WriteString("CREATE (i:Identifier:FactsetIdentifier{authority:'" + identifier.Authority + "', value:'" + identifier.IdentifierValue + "'}) CREATE (i)-[:IDENTIFIES]->(n) ")
+		}
+		//creates a sequence of letters of int length. Needed for cases where an entity has more than one tme id
+		variable := randSeq(3)
+
+		if identifier.Authority == tmeAuthority {
+			statement.WriteString("CREATE (" + variable + ":Identifier:TMEIdentifier{authority:'" + identifier.Authority + "', value:'" + identifier.IdentifierValue + "'}) CREATE (" + variable + ")-[:IDENTIFIES]->(n) ")
+		}
+	}
+
+	writeQuery := &neoism.CypherQuery{
+		Statement: statement.String(),
+		Parameters: map[string]interface{}{
+			"uuid":  p.UUID,
+			"props": params,
+		},
+	}
+
+	queries = append(queries, writeQuery)
+
+	return s.cypherRunner.CypherBatch(queries)
 }
 
 func (s service) Delete(uuid string) (bool, error) {
 	clearNode := &neoism.CypherQuery{
 		Statement: `
 			MATCH (p:Thing {uuid: {uuid}})
+			OPTIONAL MATCH (p)<-[:IDENTIFIES]-(i:Identifier)
 			REMOVE p:Concept
 			REMOVE p:Person
+			DETACH DELETE i
 			SET p={props}
 		`,
 		Parameters: map[string]interface{}{
@@ -223,6 +226,14 @@ func (s service) Count() (int, error) {
 	}
 
 	return results[0].Count, nil
+}
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
 
 const (
