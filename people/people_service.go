@@ -225,8 +225,8 @@ func (s service) Count() (int, error) {
 
 func addIdentifierQuery(identifier identifier, uuid string, identifierLabel string) *neoism.CypherQuery {
 	statementTemplate := fmt.Sprintf(`MERGE (o:Thing {uuid:{uuid}})
-								CREATE (i:Identifier {value:{value} , authority:{authority}})
-								CREATE (o)<-[:IDENTIFIES]-(i)
+								MERGE (i:Identifier {value:{value} , authority:{authority}})
+								MERGE (o)<-[:IDENTIFIES]-(i)
 								set i : %s `, identifierLabel)
 	query := &neoism.CypherQuery{
 		Statement: statementTemplate,
