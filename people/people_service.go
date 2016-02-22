@@ -244,5 +244,5 @@ const (
 )
 
 const (
-	tmeAuthority = "http://api.ft.com/system/TME"
+	tmeAuthority = "http://api.ft.com/system/FT-TME"
 )
