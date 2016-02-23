@@ -139,8 +139,12 @@ func (s service) Write(thing interface{}) error {
 	}
 
 	for _, identifier := range p.Identifiers {
-		addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
-		queries = append(queries, addIdentifierQuery)
+		if identifierLabels[identifier.Authority] == "" {
+			return fmt.Errorf("Invalid authority: %s. Only Factset and FT-TME are currently supported.", identifier.Authority)
+		} else {
+			addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
+			queries = append(queries, addIdentifierQuery)
+		}
 	}
 
 	return s.cypherRunner.CypherBatch(queries)
@@ -225,8 +229,8 @@ func (s service) Count() (int, error) {
 
 func addIdentifierQuery(identifier identifier, uuid string, identifierLabel string) *neoism.CypherQuery {
 	statementTemplate := fmt.Sprintf(`MERGE (o:Thing {uuid:{uuid}})
-								CREATE (i:Identifier {value:{value} , authority:{authority}})
-								CREATE (o)<-[:IDENTIFIES]-(i)
+								MERGE (i:Identifier {value:{value} , authority:{authority}})
+								MERGE (o)<-[:IDENTIFIES]-(i)
 								set i : %s `, identifierLabel)
 	query := &neoism.CypherQuery{
 		Statement: statementTemplate,
@@ -240,9 +244,6 @@ func addIdentifierQuery(identifier identifier, uuid string, identifierLabel stri
 }
 
 const (
-	fsAuthority = "http://api.ft.com/system/FACTSET-PPL"
-)
-
-const (
+	fsAuthority  = "http://api.ft.com/system/FACTSET-PPL"
 	tmeAuthority = "http://api.ft.com/system/FT-TME"
 )
