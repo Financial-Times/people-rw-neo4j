@@ -22,9 +22,10 @@ func NewCypherPeopleService(cypherRunner neoutils.CypherRunner, indexManager neo
 
 func (s service) Initialise() error {
 	return neoutils.EnsureConstraints(s.indexManager, map[string]string{
-		"Thing":   "uuid",
-		"Concept": "uuid",
-		"Person":  "uuid"})
+		"Thing":      "uuid",
+		"Concept":    "uuid",
+		"Person":     "uuid",
+		"Identifier": "value"})
 }
 
 func (s service) Read(uuid string) (interface{}, bool, error) {
@@ -108,8 +109,8 @@ func (s service) Write(thing interface{}) error {
 
 	deleteEntityRelationshipsQuery := &neoism.CypherQuery{
 		Statement: `MATCH (t:Thing {uuid:{uuid}})
-					OPTIONAL MATCH (i:Identifier)-[:IDENTIFIES]->(t)
-					DETACH DELETE i`,
+					OPTIONAL MATCH (i:Identifier)-[ir:IDENTIFIES]->(t)
+					DELETE ir, i`,
 		Parameters: map[string]interface{}{
 			"uuid": p.UUID,
 		},
@@ -140,7 +141,7 @@ func (s service) Write(thing interface{}) error {
 
 	for _, identifier := range p.Identifiers {
 		if identifierLabels[identifier.Authority] == "" {
-			return fmt.Errorf("Invalid authority: %s. Only Factset and FT-TME are currently supported.", identifier.Authority)
+			return fmt.Errorf("Invalid authority: %s. Only FACTSET-PPL and FT-TME are currently supported.", identifier.Authority)
 		} else {
 			addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
 			queries = append(queries, addIdentifierQuery)
@@ -150,14 +151,30 @@ func (s service) Write(thing interface{}) error {
 	return s.cypherRunner.CypherBatch(queries)
 }
 
+func addIdentifierQuery(identifier identifier, uuid string, identifierLabel string) *neoism.CypherQuery {
+	statementTemplate := fmt.Sprintf(`MERGE (o:Thing {uuid:{uuid}})
+								MERGE (i:Identifier {value:{value} , authority:{authority}})
+								MERGE (o)<-[:IDENTIFIES]-(i)
+								set i : %s `, identifierLabel)
+	query := &neoism.CypherQuery{
+		Statement: statementTemplate,
+		Parameters: map[string]interface{}{
+			"uuid":      uuid,
+			"value":     identifier.IdentifierValue,
+			"authority": identifier.Authority,
+		},
+	}
+	return query
+}
+
 func (s service) Delete(uuid string) (bool, error) {
 	clearNode := &neoism.CypherQuery{
 		Statement: `
 			MATCH (p:Thing {uuid: {uuid}})
-			OPTIONAL MATCH (p)<-[:IDENTIFIES]-(i:Identifier)
+			OPTIONAL MATCH (p)<-[ir:IDENTIFIES]-(i:Identifier)
 			REMOVE p:Concept
 			REMOVE p:Person
-			DETACH DELETE i
+			DETACH DELETE ir, i
 			SET p={props}
 		`,
 		Parameters: map[string]interface{}{
@@ -225,22 +242,6 @@ func (s service) Count() (int, error) {
 	}
 
 	return results[0].Count, nil
-}
-
-func addIdentifierQuery(identifier identifier, uuid string, identifierLabel string) *neoism.CypherQuery {
-	statementTemplate := fmt.Sprintf(`MERGE (o:Thing {uuid:{uuid}})
-								MERGE (i:Identifier {value:{value} , authority:{authority}})
-								MERGE (o)<-[:IDENTIFIES]-(i)
-								set i : %s `, identifierLabel)
-	query := &neoism.CypherQuery{
-		Statement: statementTemplate,
-		Parameters: map[string]interface{}{
-			"uuid":      uuid,
-			"value":     identifier.IdentifierValue,
-			"authority": identifier.Authority,
-		},
-	}
-	return query
 }
 
 const (
