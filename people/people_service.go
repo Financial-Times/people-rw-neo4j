@@ -141,7 +141,7 @@ func (s service) Write(thing interface{}) error {
 
 	for _, identifier := range p.Identifiers {
 		if identifierLabels[identifier.Authority] == "" {
-			return fmt.Errorf("Invalid authority: %s. Only FACTSET-PPL and FT-TME are currently supported.", identifier.Authority)
+			return requestError{fmt.Sprintf("This identifier type- %v, is not supported. Only '%v' and '%v' are currently supported", identifier.Authority, fsAuthority, tmeAuthority)}
 		} else {
 			addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
 			queries = append(queries, addIdentifierQuery)
@@ -242,6 +242,18 @@ func (s service) Count() (int, error) {
 	}
 
 	return results[0].Count, nil
+}
+
+type requestError struct {
+	details string
+}
+
+func (re requestError) Error() string {
+	return "Invalid Request"
+}
+
+func (re requestError) InvalidRequestDetails() string {
+	return re.details
 }
 
 const (
