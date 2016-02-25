@@ -29,7 +29,7 @@ var fullPerson = person{
 	Name:        "Full Person",
 	BirthYear:   1900,
 	Salutation:  "Dr.",
-	Identifiers: []identifier{fsIdentifier, firstTmeIdentifier},
+	Identifiers: []identifier{fsIdentifier, firstTmeIdentifier, secondTmeIdentifier},
 	Aliases:     []string{"Diff Name"},
 }
 
@@ -116,7 +116,7 @@ func TestWritePersonWithUnsupportedAuthority(t *testing.T) {
 	assert.Error(peopleDriver.Write(personToWrite))
 }
 
-func TestAliasesAreWrittenAreAbleToBeReadAndAreEqualToList(t *testing.T) {
+func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 	assert := assert.New(t)
 	peopleDriver := getPeopleCypherDriver(t)
 	uuid := "12345"

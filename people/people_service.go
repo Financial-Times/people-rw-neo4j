@@ -1,7 +1,6 @@
 package people
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -31,7 +30,7 @@ func (s service) Initialise() error {
 func (s service) Read(uuid string) (interface{}, bool, error) {
 	results := []person{}
 
-	query := &neoism.CypherQuery{
+	readQuery := &neoism.CypherQuery{
 		Statement: `MATCH (p:Person {uuid:{uuid}})
 					OPTIONAL MATCH (p)<-[rel:IDENTIFIES]-(i:Identifier)
 					WITH p,collect({authority:i.authority, identifierValue:i.value}) as identifiers
@@ -47,14 +46,8 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		Result: &results,
 	}
 
-	err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
-
-	if err != nil {
+	if err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil || len(results) == 0 {
 		return person{}, false, err
-	}
-
-	if len(results) == 0 {
-		return person{}, false, nil
 	}
 
 	result := results[0]
@@ -71,6 +64,8 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		Identifiers: result.Identifiers,
 		Aliases:     result.Aliases,
 	}
+
+	sortIdentifiers(p.Identifiers)
 
 	return p, true, nil
 
@@ -118,14 +113,11 @@ func (s service) Write(thing interface{}) error {
 
 	queries := []*neoism.CypherQuery{deleteEntityRelationshipsQuery}
 
-	var statement bytes.Buffer
-	statement.WriteString(`MERGE (n:Thing{uuid: {uuid}})
-					set n={props}
-					set n :Concept
-					set n :Person `)
-
 	writeQuery := &neoism.CypherQuery{
-		Statement: statement.String(),
+		Statement: `MERGE (n:Thing{uuid: {uuid}})
+						set n={props}
+						set n :Concept
+						set n :Person `,
 		Parameters: map[string]interface{}{
 			"uuid":  p.UUID,
 			"props": params,
@@ -142,10 +134,9 @@ func (s service) Write(thing interface{}) error {
 	for _, identifier := range p.Identifiers {
 		if identifierLabels[identifier.Authority] == "" {
 			return requestError{fmt.Sprintf("This identifier type- %v, is not supported. Only '%v' and '%v' are currently supported", identifier.Authority, fsAuthority, tmeAuthority)}
-		} else {
-			addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
-			queries = append(queries, addIdentifierQuery)
 		}
+		addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
+		queries = append(queries, addIdentifierQuery)
 	}
 
 	return s.cypherRunner.CypherBatch(queries)
