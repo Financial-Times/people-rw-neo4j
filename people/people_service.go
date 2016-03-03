@@ -144,8 +144,8 @@ func (s service) Write(thing interface{}) error {
 
 func addIdentifierQuery(identifier identifier, uuid string, identifierLabel string) *neoism.CypherQuery {
 	statementTemplate := fmt.Sprintf(`MERGE (o:Thing {uuid:{uuid}})
-								MERGE (i:Identifier {value:{value} , authority:{authority}})
-								MERGE (o)<-[:IDENTIFIES]-(i)
+								CREATE (i:Identifier {value:{value} , authority:{authority}})
+								CREATE (o)<-[:IDENTIFIES]-(i)
 								set i : %s `, identifierLabel)
 	query := &neoism.CypherQuery{
 		Statement: statementTemplate,
@@ -165,7 +165,7 @@ func (s service) Delete(uuid string) (bool, error) {
 			OPTIONAL MATCH (p)<-[ir:IDENTIFIES]-(i:Identifier)
 			REMOVE p:Concept
 			REMOVE p:Person
-			DETACH DELETE ir, i
+			DELETE ir, i
 			SET p={props}
 		`,
 		Parameters: map[string]interface{}{

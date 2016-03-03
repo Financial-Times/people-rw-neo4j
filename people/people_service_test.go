@@ -16,6 +16,7 @@ import (
 const (
 	minimalPersonUuid = "180cec41-23fa-4148-806b-0602924e6858"
 	fullPersonUuid    = "bbc4f575-edb3-4f51-92f0-5ce6c708d1ea"
+	uniquePersonUuid  = "bb596d64-78c5-4b00-a88f-e8248c956073"
 )
 
 var minimalPerson = person{
@@ -57,60 +58,82 @@ var peopleDriver baseftrwapp.Service
 
 func TestCreateAllValuesPresent(t *testing.T) {
 	assert := assert.New(t)
-	peopleDriver = getPeopleCypherDriver(t)
+
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
 
 	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
 
-	readPersonForUUIDAndCheckFieldsMatch(t, fullPersonUuid, fullPerson)
+	storedPerson, _, err := peopleDriver.Read(fullPersonUuid)
 
-	cleanUp(t, fullPersonUuid)
+	assert.NoError(err)
+	assert.NotEmpty(storedPerson)
 }
 
 func TestCreateNotAllValuesPresent(t *testing.T) {
 	assert := assert.New(t)
-	peopleDriver = getPeopleCypherDriver(t)
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
 
-	readPersonForUUIDAndCheckFieldsMatch(t, minimalPersonUuid, minimalPerson)
+	storedPerson, _, err := peopleDriver.Read(minimalPersonUuid)
 
-	cleanUp(t, minimalPersonUuid)
+	assert.NoError(err)
+	assert.NotEmpty(storedPerson)
 }
 
 func TestCreateHandlesSpecialCharacters(t *testing.T) {
 	assert := assert.New(t)
-	uuid := "12345"
-	peopleDriver = getPeopleCypherDriver(t)
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
 
-	personToWrite := person{UUID: uuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr",
+	personToWrite := person{UUID: uniquePersonUuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr",
 		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 
-	readPersonForUUIDAndCheckFieldsMatch(t, uuid, personToWrite)
+	storedPerson, _, err := peopleDriver.Read(uniquePersonUuid)
 
-	cleanUp(t, uuid)
+	assert.NoError(err)
+	assert.NotEmpty(storedPerson)
 }
 
 func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 	assert := assert.New(t)
-	peopleDriver = getPeopleCypherDriver(t)
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
 
 	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
-	readPersonForUUIDAndCheckFieldsMatch(t, fullPersonUuid, fullPerson)
+	storedFullPerson, _, err := peopleDriver.Read(fullPersonUuid)
+
+	assert.NoError(err)
+	assert.NotEmpty(storedFullPerson)
+
+	var minimalPerson = person{
+		UUID:        fullPersonUuid,
+		Name:        "Minimal Person",
+		Identifiers: []identifier{fsIdentifier},
+	}
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write updated person")
-	readPersonForUUIDAndCheckFieldsMatch(t, minimalPersonUuid, minimalPerson)
+	storedMinimalPerson, _, err := peopleDriver.Read(fullPersonUuid)
 
-	cleanUp(t, minimalPersonUuid)
+	assert.NoError(err)
+	assert.NotEmpty(storedMinimalPerson)
 }
 
 func TestWritePersonWithUnsupportedAuthority(t *testing.T) {
 	assert := assert.New(t)
-	uuid := "12345"
-	peopleDriver = getPeopleCypherDriver(t)
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
 
-	personToWrite := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
+	personToWrite := person{UUID: uniquePersonUuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
 		Identifiers: []identifier{invalidIdentifier}, Aliases: []string{"alias 1", "alias 2"}}
 
 	assert.Error(peopleDriver.Write(personToWrite))
@@ -118,9 +141,10 @@ func TestWritePersonWithUnsupportedAuthority(t *testing.T) {
 
 func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 	assert := assert.New(t)
-	peopleDriver := getPeopleCypherDriver(t)
-	uuid := "12345"
-	personToWrite := person{UUID: uuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
+	personToWrite := person{UUID: uniquePersonUuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
 		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	peopleDriver.Write(personToWrite)
@@ -131,20 +155,36 @@ func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 
 	getPrefLabelQuery := &neoism.CypherQuery{
 		Statement: `
-				MATCH (t:Person {uuid:"12345"}) RETURN t.aliases
+				MATCH (t:Person {uuid:{uuid}}) RETURN t.aliases
 				`,
+		Parameters: map[string]interface{}{
+			"uuid": uniquePersonUuid,
+		},
 		Result: &result,
 	}
 
 	err := peopleDriver.cypherRunner.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
 	assert.NoError(err)
 	assert.Equal("alias 1", result[0].Aliases[0], "PrefLabel should be 'alias 1")
-	cleanUp(t, uuid)
+}
+
+func TestAddingPersonWithExistingIdentifiersShouldFail(t *testing.T) {
+	assert := assert.New(t)
+
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	cypherDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
+	assert.NoError(cypherDriver.Write(fullPerson))
+	err := cypherDriver.Write(minimalPerson)
+	assert.Error(err)
+	assert.IsType(&neoutils.ConstraintViolationError{}, err)
 }
 
 func TestPrefLabelIsEqualToNameAndAbleToBeRead(t *testing.T) {
 	assert := assert.New(t)
-	peopleDriver := getPeopleCypherDriver(t)
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
 
 	storedPerson := peopleDriver.Write(fullPerson)
 
@@ -167,12 +207,13 @@ func TestPrefLabelIsEqualToNameAndAbleToBeRead(t *testing.T) {
 	err := peopleDriver.cypherRunner.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
 	assert.NoError(err)
 	assert.Equal(fullPerson.Name, result[0].PrefLabel, "PrefLabel should be 'Full Person")
-	cleanUp(t, fullPersonUuid)
 }
 
 func TestDelete(t *testing.T) {
 	assert := assert.New(t)
-	peopleDriver = getPeopleCypherDriver(t)
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+	defer cleanDB(db, t, assert)
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
 
@@ -187,15 +228,14 @@ func TestDelete(t *testing.T) {
 	assert.NoError(err, "Error trying to find person for uuid %s", minimalPersonUuid)
 }
 
-func TestConnectivityCheck(t *testing.T) {
-	assert := assert.New(t)
-	peopleDriver = getPeopleCypherDriver(t)
-	err := peopleDriver.Check()
-	assert.NoError(err, "Unexpected error on connectivity check")
+func getDatabaseConnectionAndCheckClean(t *testing.T, assert *assert.Assertions) *neoism.Database {
+	db := getDatabaseConnection(assert)
+	cleanDB(db, t, assert)
+	checkDbClean(db, t)
+	return db
 }
 
-func getPeopleCypherDriver(t *testing.T) service {
-	assert := assert.New(t)
+func getDatabaseConnection(assert *assert.Assertions) *neoism.Database {
 	url := os.Getenv("NEO4J_TEST_URL")
 	if url == "" {
 		url = "http://localhost:7474/db/data"
@@ -203,21 +243,46 @@ func getPeopleCypherDriver(t *testing.T) service {
 
 	db, err := neoism.Connect(url)
 	assert.NoError(err, "Failed to connect to Neo4j")
-	return NewCypherPeopleService(neoutils.StringerDb{db}, db)
+	return db
 }
 
-func readPersonForUUIDAndCheckFieldsMatch(t *testing.T, uuid string, expectedPerson person) {
-	assert := assert.New(t)
-	storedPerson, found, err := peopleDriver.Read(uuid)
+func cleanDB(db *neoism.Database, t *testing.T, assert *assert.Assertions) {
+	qs := []*neoism.CypherQuery{
+		{
+			Statement: fmt.Sprintf("MATCH (mp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE mp, i", minimalPersonUuid),
+		},
+		{
+			Statement: fmt.Sprintf("MATCH (fp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE fp, i", fullPersonUuid),
+		},
+	}
 
-	assert.NoError(err, "Error finding person for uuid %s", uuid)
-	assert.True(found, "Didn't find person for uuid %s", uuid)
-	assert.Equal(expectedPerson, storedPerson, "people should be the same")
+	err := db.CypherBatch(qs)
+	assert.NoError(err)
 }
 
-func cleanUp(t *testing.T, uuid string) {
+func checkDbClean(db *neoism.Database, t *testing.T) {
 	assert := assert.New(t)
-	found, err := peopleDriver.Delete(uuid)
-	assert.True(found, "Didn't manage to delete person for uuid %", uuid)
-	assert.NoError(err, "Error deleting person for uuid %s", uuid)
+
+	result := []struct {
+		Uuid string `json:"org.uuid"`
+	}{}
+
+	checkGraph := neoism.CypherQuery{
+		Statement: `
+			MATCH (org:Thing) WHERE org.uuid in {uuids} RETURN org.uuid
+		`,
+		Parameters: neoism.Props{
+			"uuids": []string{fullPersonUuid, minimalPersonUuid},
+		},
+		Result: &result,
+	}
+	err := db.Cypher(&checkGraph)
+	assert.NoError(err)
+	assert.Empty(result)
+}
+
+func getCypherDriver(db *neoism.Database) service {
+	cr := NewCypherPeopleService(neoutils.NewBatchCypherRunner(neoutils.StringerDb{db}, 3), db)
+	cr.Initialise()
+	return cr
 }
