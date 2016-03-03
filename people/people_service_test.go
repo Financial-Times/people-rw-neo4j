@@ -168,7 +168,7 @@ func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 	assert.Equal("alias 1", result[0].Aliases[0], "PrefLabel should be 'alias 1")
 }
 
-func TestAddingPersonWithExistingIdentifiers(t *testing.T) {
+func TestAddingPersonWithExistingIdentifiersShouldFail(t *testing.T) {
 	assert := assert.New(t)
 
 	db := getDatabaseConnectionAndCheckClean(t, assert)
