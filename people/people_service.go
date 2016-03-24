@@ -71,6 +71,38 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 
 }
 
+func (s service) IDs(ids chan<- string, errCh chan<- error, stopChan <-chan struct{}) {
+	batchSize := 4096
+
+	for skip := 0; ; skip += batchSize {
+		results := []struct {
+			ID string
+		}{}
+		readQuery := &neoism.CypherQuery{
+			Statement: `MATCH (p:Person) RETURN p.uuid as id SKIP {skip} LIMIT {limit}`,
+			Parameters: map[string]interface{}{
+				"limit": batchSize,
+				"skip":  skip,
+			},
+			Result: &results,
+		}
+		if err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil {
+			errCh <- err
+			return
+		}
+		if len(results) == 0 {
+			return
+		}
+		for _, result := range results {
+			select {
+			case ids <- result.ID:
+			case <-stopChan:
+				return
+			}
+		}
+	}
+}
+
 func (s service) Write(thing interface{}) error {
 
 	p := thing.(person)
