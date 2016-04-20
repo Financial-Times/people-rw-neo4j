@@ -1,6 +1,6 @@
 FROM alpine:3.3
 ADD *.go .git /people-rw-neo4j/
-ADD people/ *.go /people-rw-neo4j/people/
+ADD people/*.go /people-rw-neo4j/people/
 RUN apk add --update bash \
   && apk --update add git go \
   && cd people-rw-neo4j \
@@ -26,4 +26,3 @@ RUN apk add --update bash \
   && apk del go git \
   && rm -rf $GOPATH /var/cache/apk/*
 CMD exec /app --neo-url=$NEO_URL --port=$APP_PORT --batchSize=$BATCH_SIZE --graphiteTCPAddress=$GRAPHITE_ADDRESS --graphitePrefix=$GRAPHITE_PREFIX --logMetrics=false --env=local
-
