@@ -1,6 +1,6 @@
 FROM alpine:3.3
 ADD *.go .git /people-rw-neo4j/
-ADD people/*.go /people-rw-neo4j/people/
+ADD people/ *.go /people-rw-neo4j/people/
 RUN apk add --update bash \
   && apk --update add git go \
   && cd people-rw-neo4j \
