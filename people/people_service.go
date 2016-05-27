@@ -21,10 +21,11 @@ func NewCypherPeopleService(cypherRunner neoutils.CypherRunner, indexManager neo
 
 func (s service) Initialise() error {
 	return neoutils.EnsureConstraints(s.indexManager, map[string]string{
-		"Thing":      "uuid",
-		"Concept":    "uuid",
-		"Person":     "uuid",
-		"Identifier": "value"})
+		"Thing":             "uuid",
+		"Concept":           "uuid",
+		"Person":            "uuid",
+		"FactsetIdentifier": "value",
+		"TMEIdentifier":     "value"})
 }
 
 func (s service) Read(uuid string) (interface{}, bool, error) {
