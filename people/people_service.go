@@ -37,9 +37,14 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 					WITH p,collect({authority:i.authority, identifierValue:i.value}) as identifiers
 						return p.uuid as uuid,
 									 p.name as name,
+									 p.emailAddress as emailAddress,
+									 p.twitterHandle as twitterHandle,
+									 p.description as description,
+									 p.descriptionXML as descriptionXML,
 									 identifiers,
 									 p.birthYear as birthYear,
 									 p.salutation as salutation,
+									 p.imageURL AS _imageURL	,
 									 p.aliases as aliases`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
@@ -58,12 +63,17 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 	}
 
 	p := person{
-		UUID:        result.UUID,
-		Name:        result.Name,
-		BirthYear:   result.BirthYear,
-		Salutation:  result.Salutation,
-		Identifiers: result.Identifiers,
-		Aliases:     result.Aliases,
+		UUID:           result.UUID,
+		Name:           result.Name,
+		EmailAddress:   result.EmailAddress,
+		TwitterHandle:  result.TwitterHandle,
+		Description:    result.Description,
+		DescriptionXML: result.DescriptionXML,
+		BirthYear:      result.BirthYear,
+		Salutation:     result.Salutation,
+		ImageURL:       result.ImageURL,
+		Identifiers:    result.Identifiers,
+		Aliases:        result.Aliases,
 	}
 
 	sortIdentifiers(p.Identifiers)
@@ -91,6 +101,26 @@ func (s service) Write(thing interface{}) error {
 
 	if p.Salutation != "" {
 		params["salutation"] = p.Salutation
+	}
+
+	if p.EmailAddress != "" {
+		params["emailAddress"] = p.EmailAddress
+	}
+
+	if p.TwitterHandle != "" {
+		params["twitterHandle"] = p.TwitterHandle
+	}
+
+	if p.Description != "" {
+		params["description"] = p.Description
+	}
+
+	if p.DescriptionXML != "" {
+		params["descriptionXML"] = p.DescriptionXML
+	}
+
+	if p.ImageURL != "" {
+		params["imageURL"] = p.ImageURL
 	}
 
 	var aliases []string

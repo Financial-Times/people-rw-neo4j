@@ -5,12 +5,17 @@ import "sort"
 type SortedIdentifiers []identifier
 
 type person struct {
-	UUID        string       `json:"uuid"`
-	BirthYear   int          `json:"birthYear,omitempty"`
-	Identifiers []identifier `json:"identifiers,omitempty"`
-	Name        string       `json:"name,omitempty"`
-	Salutation  string       `json:"salutation,omitempty"`
-	Aliases     []string     `json:"aliases,omitempty"`
+	UUID           string       `json:"uuid"`
+	BirthYear      int          `json:"birthYear,omitempty"`
+	Identifiers    []identifier `json:"identifiers,omitempty"`
+	Name           string       `json:"name,omitempty"`
+	Salutation     string       `json:"salutation,omitempty"`
+	Aliases        []string     `json:"aliases,omitempty"`
+	EmailAddress   string       `json:"emailAddress,omitempty"`
+	TwitterHandle  string       `json:"twitterHandler,omitempty"`
+	Description    string       `json:"description,omitempty"`
+	DescriptionXML string       `json:"descriptionXML,omitempty"`
+	ImageURL       string       `json:"_imageUrl"` // TODO this is a temporary thing - needs to be integrated into images properly
 }
 
 type identifier struct {
