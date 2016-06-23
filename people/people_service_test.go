@@ -4,57 +4,46 @@ package people
 
 import (
 	"fmt"
-	"os"
-	"testing"
-
-	"github.com/Financial-Times/base-ft-rw-app-go/baseftrwapp"
 	"github.com/Financial-Times/neo-utils-go/neoutils"
 	"github.com/jmcvetta/neoism"
 	"github.com/stretchr/testify/assert"
+	"os"
+	"sort"
+	"testing"
 )
 
 const (
-	minimalPersonUuid = "180cec41-23fa-4148-806b-0602924e6858"
-	fullPersonUuid    = "bbc4f575-edb3-4f51-92f0-5ce6c708d1ea"
-	uniquePersonUuid  = "bb596d64-78c5-4b00-a88f-e8248c956073"
+	minimalPersonUuid    = "180cec41-23fa-4148-806b-0602924e6858"
+	fullPersonUuid       = "bbc4f575-edb3-4f51-92f0-5ce6c708d1ea"
+	fullPersonSecondUuid = "026bc6ab-3581-476f-bdee-ad44934d8255"
+	fullPersonThirdUuid  = "38431a92-dda3-4eb9-a367-60145a8e659f"
+	uniquePersonUuid     = "bb596d64-78c5-4b00-a88f-e8248c956073"
 )
 
 var minimalPerson = person{
-	UUID:        minimalPersonUuid,
-	Name:        "Minimal Person",
-	Identifiers: []identifier{fsIdentifier},
+	UUID: minimalPersonUuid,
+	Name: "Minimal Person",
+	AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: fsIdentifier, UUIDS: []string{minimalPersonUuid}, TME: []string{}},
+	Types: defaultTypes,
 }
 
 var fullPerson = person{
-	UUID:        fullPersonUuid,
-	Name:        "Full Person",
-	BirthYear:   1900,
-	Salutation:  "Dr.",
-	Identifiers: []identifier{fsIdentifier, firstTmeIdentifier, secondTmeIdentifier},
-	Aliases:     []string{"Diff Name"},
+	UUID:                   fullPersonUuid,
+	Name:                   "Full Person",
+	BirthYear:              1900,
+	Salutation:             "Dr.",
+	AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: fsIdentifier, UUIDS: []string{fullPersonUuid, fullPersonSecondUuid, fullPersonThirdUuid}, TME: []string{firstTmeIdentifier, secondTmeIdentifier}},
+	Aliases:                []string{"Diff Name"},
+	Types:                  defaultTypes,
 }
 
-var fsIdentifier = identifier{
-	Authority:       fsAuthority,
-	IdentifierValue: "012345-E",
-}
+const (
+	fsIdentifier        string = "012345-E"
+	firstTmeIdentifier  string = "tmeIdentifier"
+	secondTmeIdentifier string = "tmeIdentifier2"
+)
 
-var firstTmeIdentifier = identifier{
-	Authority:       tmeAuthority,
-	IdentifierValue: "tmeIdentifier",
-}
-
-var secondTmeIdentifier = identifier{
-	Authority:       tmeAuthority,
-	IdentifierValue: "tmeIdentifier2",
-}
-
-var invalidIdentifier = identifier{
-	Authority:       "Invalid Authority",
-	IdentifierValue: "tmeIdentifier2",
-}
-
-var peopleDriver baseftrwapp.Service
+var defaultTypes = []string{"Thing", "Concept", "Person"}
 
 func TestCreateAllValuesPresent(t *testing.T) {
 	assert := assert.New(t)
@@ -65,10 +54,7 @@ func TestCreateAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
 
-	storedPerson, _, err := peopleDriver.Read(fullPersonUuid)
-
-	assert.NoError(err)
-	assert.NotEmpty(storedPerson)
+	readPeopleAndCompare(fullPerson, t, db)
 }
 
 func TestCreateNotAllValuesPresent(t *testing.T) {
@@ -79,10 +65,7 @@ func TestCreateNotAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
 
-	storedPerson, _, err := peopleDriver.Read(minimalPersonUuid)
-
-	assert.NoError(err)
-	assert.NotEmpty(storedPerson)
+	readPeopleAndCompare(minimalPerson, t, db)
 }
 
 func TestCreateHandlesSpecialCharacters(t *testing.T) {
@@ -91,15 +74,11 @@ func TestCreateHandlesSpecialCharacters(t *testing.T) {
 	peopleDriver := getCypherDriver(db)
 	defer cleanDB(db, t, assert)
 
-	personToWrite := person{UUID: uniquePersonUuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr",
-		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
+	personToWrite := person{UUID: uniquePersonUuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr", AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: "FACTSET_ID", UUIDS: []string{uniquePersonUuid}, TME: []string{}}, Aliases: []string{"alias 1", "alias 2"}, Types: defaultTypes}
 
 	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
 
-	storedPerson, _, err := peopleDriver.Read(uniquePersonUuid)
-
-	assert.NoError(err)
-	assert.NotEmpty(storedPerson)
+	readPeopleAndCompare(personToWrite, t, db)
 }
 
 func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
@@ -115,28 +94,15 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 	assert.NotEmpty(storedFullPerson)
 
 	var minimalPerson = person{
-		UUID:        fullPersonUuid,
-		Name:        "Minimal Person",
-		Identifiers: []identifier{fsIdentifier},
+		UUID: fullPersonUuid,
+		Name: "Minimal Person",
+		AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: fsIdentifier, UUIDS: []string{fullPersonUuid}, TME: []string{}},
+		Types: defaultTypes,
 	}
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write updated person")
-	storedMinimalPerson, _, err := peopleDriver.Read(fullPersonUuid)
 
-	assert.NoError(err)
-	assert.NotEmpty(storedMinimalPerson)
-}
-
-func TestWritePersonWithUnsupportedAuthority(t *testing.T) {
-	assert := assert.New(t)
-	db := getDatabaseConnectionAndCheckClean(t, assert)
-	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
-
-	personToWrite := person{UUID: uniquePersonUuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
-		Identifiers: []identifier{invalidIdentifier}, Aliases: []string{"alias 1", "alias 2"}}
-
-	assert.Error(peopleDriver.Write(personToWrite))
+	readPeopleAndCompare(minimalPerson, t, db)
 }
 
 func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
@@ -144,8 +110,7 @@ func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
 	defer cleanDB(db, t, assert)
-	personToWrite := person{UUID: uniquePersonUuid, Name: "Test", BirthYear: 1974, Salutation: "Mr",
-		Identifiers: []identifier{identifier{fsAuthority, "FACTSET_ID"}}, Aliases: []string{"alias 1", "alias 2"}}
+	personToWrite := person{UUID: uniquePersonUuid, Name: "Test", BirthYear: 1974, Salutation: "Mr", AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: "FACTSET_ID", UUIDS: []string{uniquePersonUuid}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	peopleDriver.Write(personToWrite)
 
@@ -228,6 +193,23 @@ func TestDelete(t *testing.T) {
 	assert.NoError(err, "Error trying to find person for uuid %s", minimalPersonUuid)
 }
 
+func readPeopleAndCompare(expected person, t *testing.T, db *neoism.Database) {
+	sort.Strings(expected.Types)
+	sort.Strings(expected.AlternativeIdentifiers.TME)
+	sort.Strings(expected.AlternativeIdentifiers.UUIDS)
+
+	actual, found, err := getCypherDriver(db).Read(expected.UUID)
+	assert.NoError(t, err)
+	assert.True(t, found)
+
+	actualPeople := actual.(person)
+	sort.Strings(actualPeople.Types)
+	sort.Strings(actualPeople.AlternativeIdentifiers.TME)
+	sort.Strings(actualPeople.AlternativeIdentifiers.UUIDS)
+
+	assert.EqualValues(t, expected, actualPeople)
+}
+
 func getDatabaseConnectionAndCheckClean(t *testing.T, assert *assert.Assertions) *neoism.Database {
 	db := getDatabaseConnection(assert)
 	cleanDB(db, t, assert)
@@ -254,6 +236,9 @@ func cleanDB(db *neoism.Database, t *testing.T, assert *assert.Assertions) {
 		{
 			Statement: fmt.Sprintf("MATCH (fp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE fp, i", fullPersonUuid),
 		},
+		{
+			Statement: fmt.Sprintf("MATCH (fp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE fp, i", uniquePersonUuid),
+		},
 	}
 
 	err := db.CypherBatch(qs)
@@ -272,7 +257,7 @@ func checkDbClean(db *neoism.Database, t *testing.T) {
 			MATCH (org:Thing) WHERE org.uuid in {uuids} RETURN org.uuid
 		`,
 		Parameters: neoism.Props{
-			"uuids": []string{fullPersonUuid, minimalPersonUuid},
+			"uuids": []string{fullPersonUuid, minimalPersonUuid, uniquePersonUuid},
 		},
 		Result: &result,
 	}

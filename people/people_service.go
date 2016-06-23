@@ -25,7 +25,8 @@ func (s service) Initialise() error {
 		"Concept":           "uuid",
 		"Person":            "uuid",
 		"FactsetIdentifier": "value",
-		"TMEIdentifier":     "value"})
+		"TMEIdentifier":     "value",
+		"UPPIdentifier":     "value"})
 }
 
 func (s service) Read(uuid string) (interface{}, bool, error) {
@@ -33,14 +34,18 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 
 	readQuery := &neoism.CypherQuery{
 		Statement: `MATCH (p:Person {uuid:{uuid}})
-					OPTIONAL MATCH (p)<-[rel:IDENTIFIES]-(i:Identifier)
-					WITH p,collect({authority:i.authority, identifierValue:i.value}) as identifiers
-						return p.uuid as uuid,
-									 p.name as name,
-									 identifiers,
-									 p.birthYear as birthYear,
-									 p.salutation as salutation,
-									 p.aliases as aliases`,
+					OPTIONAL MATCH (upp:UPPIdentifier)-[:IDENTIFIES]->(p)
+					OPTIONAL MATCH (factset:FactsetIdentifier)-[:IDENTIFIES]->(p)
+					OPTIONAL MATCH (tme:TMEIdentifier)-[:IDENTIFIES]->(p)
+					return p.uuid as uuid,
+						p.name as name,
+						p.birthYear as birthYear,
+						p.salutation as salutation,
+						p.aliases as aliases,
+						labels(p) as types,
+						{uuids:collect(distinct upp.value),
+							TME:collect(distinct tme.value),
+							factsetIdentifier:factset.value} as alternativeIdentifiers`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
 		},
@@ -51,24 +56,11 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		return person{}, false, err
 	}
 
-	result := results[0]
-
-	if len(result.Identifiers) == 1 && (result.Identifiers[0].IdentifierValue == "") {
-		result.Identifiers = []identifier{}
+	if len(results) == 0 {
+		return person{}, false, nil
 	}
 
-	p := person{
-		UUID:        result.UUID,
-		Name:        result.Name,
-		BirthYear:   result.BirthYear,
-		Salutation:  result.Salutation,
-		Identifiers: result.Identifiers,
-		Aliases:     result.Aliases,
-	}
-
-	sortIdentifiers(p.Identifiers)
-
-	return p, true, nil
+	return results[0], true, nil
 
 }
 
@@ -127,33 +119,34 @@ func (s service) Write(thing interface{}) error {
 
 	queries = append(queries, writeQuery)
 
-	identifierLabels := map[string]string{
-		fsAuthority:  "FactsetIdentifier",
-		tmeAuthority: "TMEIdentifier",
+	//ADD all the IDENTIFIER nodes and IDENTIFIES relationships
+	for _, alternativeUUID := range p.AlternativeIdentifiers.TME {
+		alternativeIdentifierQuery := createNewIdentifierQuery(p.UUID, tmeIdentifierLabel, alternativeUUID)
+		queries = append(queries, alternativeIdentifierQuery)
 	}
 
-	for _, identifier := range p.Identifiers {
-		if identifierLabels[identifier.Authority] == "" {
-			return requestError{fmt.Sprintf("This identifier type- %v, is not supported. Only '%v' and '%v' are currently supported", identifier.Authority, fsAuthority, tmeAuthority)}
-		}
-		addIdentifierQuery := addIdentifierQuery(identifier, p.UUID, identifierLabels[identifier.Authority])
-		queries = append(queries, addIdentifierQuery)
+	for _, alternativeUUID := range p.AlternativeIdentifiers.UUIDS {
+		alternativeIdentifierQuery := createNewIdentifierQuery(p.UUID, uppIdentifierLabel, alternativeUUID)
+		queries = append(queries, alternativeIdentifierQuery)
+	}
+
+	if p.AlternativeIdentifiers.FactsetIdentifier != "" {
+		queries = append(queries, createNewIdentifierQuery(p.UUID, factsetIdentifierLabel, p.AlternativeIdentifiers.FactsetIdentifier))
 	}
 
 	return s.cypherRunner.CypherBatch(queries)
 }
 
-func addIdentifierQuery(identifier identifier, uuid string, identifierLabel string) *neoism.CypherQuery {
-	statementTemplate := fmt.Sprintf(`MERGE (o:Thing {uuid:{uuid}})
-								CREATE (i:Identifier {value:{value} , authority:{authority}})
-								CREATE (o)<-[:IDENTIFIES]-(i)
-								set i : %s `, identifierLabel)
+func createNewIdentifierQuery(uuid string, identifierLabel string, identifierValue string) *neoism.CypherQuery {
+	statementTemplate := fmt.Sprintf(`MERGE (t:Thing {uuid:{uuid}})
+					CREATE (i:Identifier {value:{value}})
+					MERGE (t)<-[:IDENTIFIES]-(i)
+					set i : %s `, identifierLabel)
 	query := &neoism.CypherQuery{
 		Statement: statementTemplate,
 		Parameters: map[string]interface{}{
-			"uuid":      uuid,
-			"value":     identifier.IdentifierValue,
-			"authority": identifier.Authority,
+			"uuid":  uuid,
+			"value": identifierValue,
 		},
 	}
 	return query
@@ -247,8 +240,3 @@ func (re requestError) Error() string {
 func (re requestError) InvalidRequestDetails() string {
 	return re.details
 }
-
-const (
-	fsAuthority  = "http://api.ft.com/system/FACTSET-PPL"
-	tmeAuthority = "http://api.ft.com/system/FT-TME"
-)

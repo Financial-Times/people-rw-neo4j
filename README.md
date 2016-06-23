@@ -43,7 +43,7 @@ The deploy also works via git tag and you can also select the environment to dep
 ## Endpoints
 /people/{uuid}
 ### PUT
-The only mandatory field is the uuid, and the uuid in the body must match the one used on the path.
+The only mandatory field is the uuid, and the alternativeIdentifier uuids (because the uuid is also listed in the alternativeIdentifier uuids list). The uuid in the body must match the one used on the path.
 
 Every request results in an attempt to update that person: unlike with GraphDB there is no check on whether the person already exists and whether there are any changes between what's there and what's being written. We just do a MERGE which is Neo4j for create if not there, update if it is there.
 
@@ -54,7 +54,9 @@ We run queries in batches. If a batch fails, all failing requests will get a 500
 Invalid json body input, or uuids that don't match between the path and the body will result in a 400 bad request response.
 
 Example:
-`curl -XPUT -H "X-Request-Id: 123" -H "Content-Type: application/json" localhost:8080/people/3fa70485-3a57-3b9b-9449-774b001cd965 --data '{"uuid":"3fa70485-3a57-3b9b-9449-774b001cd965", "birthYear": 1974, "salutation": "Mr", "name":"Robert W. Addington", "identifiers":[{ "authority":"http://api.ft.com/system/FACTSET-PPL", "identifierValue":"000BJG-E"}]}'`
+`curl -XPUT -H "X-Request-Id: 123" -H "Content-Type: application/json" localhost:8080/people/3fa70485-3a57-3b9b-9449-774b001cd965 --data '{"uuid":"3fa70485-3a57-3b9b-9449-774b001cd965", "birthYear": 1974, "salutation": "Mr", "name":"Robert W. Addington", "alternativeIdentifiers":{"TME":["MTE3-U3ViamVjdHM="],"uuids":["3fa70485-3a57-3b9b-9449-774b001cd965","6a2a0170-6afa-4bcc-b427-430268d2ac50"],"factsetIdentifier":"000BJG-E"},"type":"People"}'`
+
+The type field is not currently validated - instead, the People Writer writes type People and its parent types (Thing, Concept) as labels for People.
 
 ### GET
 Thie internal read should return what got written (i.e., this isn't the public person read API)
@@ -75,7 +77,7 @@ Ping: [http://localhost:8080/ping](http://localhost:8080/ping) or [http://localh
 
 
 ### Logging
- the application uses logrus, the logfile is initilaised in main.go.
- logging requires an env app parameter, for all enviromets  other than local logs are written to file
+ the application uses logrus, the logfile is initialised in main.go.
+ logging requires an env app parameter, for all environments  other than local logs are written to file
  when running locally logging is written to console (if you want to log locally to file you need to pass in an env parameter that is != local)
  NOTE: build-info end point is not logged as it is called every second from varnish and this information is not needed in  logs/splunk

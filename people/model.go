@@ -1,41 +1,23 @@
 package people
 
-import "sort"
-
-type SortedIdentifiers []identifier
-
 type person struct {
-	UUID        string       `json:"uuid"`
-	BirthYear   int          `json:"birthYear,omitempty"`
-	Identifiers []identifier `json:"identifiers,omitempty"`
-	Name        string       `json:"name,omitempty"`
-	Salutation  string       `json:"salutation,omitempty"`
-	Aliases     []string     `json:"aliases,omitempty"`
+	UUID                   string                 `json:"uuid"`
+	BirthYear              int                    `json:"birthYear,omitempty"`
+	Name                   string                 `json:"name,omitempty"`
+	Salutation             string                 `json:"salutation,omitempty"`
+	Aliases                []string               `json:"aliases,omitempty"`
+	AlternativeIdentifiers alternativeIdentifiers `json:"alternativeIdentifiers"`
+	Types                  []string               `json:"types,omitempty"`
 }
 
-type identifier struct {
-	Authority       string `json:"authority"`
-	IdentifierValue string `json:"identifierValue"`
+type alternativeIdentifiers struct {
+	TME               []string `json:"TME,omitempty"`
+	UUIDS             []string `json:"uuids"`
+	FactsetIdentifier string   `json:"factsetIdentifier,omitempty"`
 }
 
-func sortIdentifiers(iden []identifier) {
-	sort.Sort(SortedIdentifiers(iden))
-}
-
-// these three are the implementation of sort interface
-func (si SortedIdentifiers) Len() int {
-	return len(si)
-}
-
-func (si SortedIdentifiers) Swap(i, j int) {
-	si[i], si[j] = si[j], si[i]
-}
-
-func (si SortedIdentifiers) Less(i, j int) bool {
-
-	if si[i].Authority == si[j].Authority {
-		return si[i].IdentifierValue < si[j].IdentifierValue
-	} else {
-		return si[i].Authority < si[j].Authority
-	}
-}
+const (
+	tmeIdentifierLabel     = "TMEIdentifier"
+	uppIdentifierLabel     = "UPPIdentifier"
+	factsetIdentifierLabel = "FactsetIdentifier"
+)
