@@ -4,6 +4,7 @@ type person struct {
 	UUID                   string                 `json:"uuid"`
 	BirthYear              int                    `json:"birthYear,omitempty"`
 	Name                   string                 `json:"name,omitempty"`
+	PrefLabel              string                 `json:"prefLabel"`
 	Salutation             string                 `json:"salutation,omitempty"`
 	Aliases                []string               `json:"aliases,omitempty"`
 	AlternativeIdentifiers alternativeIdentifiers `json:"alternativeIdentifiers"`

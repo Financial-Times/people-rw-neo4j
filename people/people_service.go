@@ -39,6 +39,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 					OPTIONAL MATCH (tme:TMEIdentifier)-[:IDENTIFIES]->(p)
 					return p.uuid as uuid,
 						p.name as name,
+						p.prefLabel as prefLabel,
 						p.birthYear as birthYear,
 						p.salutation as salutation,
 						p.aliases as aliases,
@@ -74,7 +75,10 @@ func (s service) Write(thing interface{}) error {
 
 	if p.Name != "" {
 		params["name"] = p.Name
-		params["prefLabel"] = p.Name
+	}
+
+	if p.PrefLabel != "" {
+		params["prefLabel"] = p.PrefLabel
 	}
 
 	if p.BirthYear != 0 {

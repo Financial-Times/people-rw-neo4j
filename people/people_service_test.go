@@ -21,8 +21,9 @@ const (
 )
 
 var minimalPerson = person{
-	UUID: minimalPersonUuid,
-	Name: "Minimal Person",
+	UUID:                   minimalPersonUuid,
+	Name:                   "Minimal Person",
+	PrefLabel:              "Pref Label",
 	AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: fsIdentifier, UUIDS: []string{minimalPersonUuid}, TME: []string{}},
 	Types: defaultTypes,
 }
@@ -30,6 +31,7 @@ var minimalPerson = person{
 var fullPerson = person{
 	UUID:                   fullPersonUuid,
 	Name:                   "Full Person",
+	PrefLabel:              "Pref Label",
 	BirthYear:              1900,
 	Salutation:             "Dr.",
 	AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: fsIdentifier, UUIDS: []string{fullPersonUuid, fullPersonSecondUuid, fullPersonThirdUuid}, TME: []string{firstTmeIdentifier, secondTmeIdentifier}},
@@ -145,7 +147,7 @@ func TestAddingPersonWithExistingIdentifiersShouldFail(t *testing.T) {
 	assert.IsType(&neoutils.ConstraintViolationError{}, err)
 }
 
-func TestPrefLabelIsEqualToNameAndAbleToBeRead(t *testing.T) {
+func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
 	assert := assert.New(t)
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
@@ -171,7 +173,7 @@ func TestPrefLabelIsEqualToNameAndAbleToBeRead(t *testing.T) {
 
 	err := peopleDriver.cypherRunner.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
 	assert.NoError(err)
-	assert.Equal(fullPerson.Name, result[0].PrefLabel, "PrefLabel should be 'Full Person")
+	assert.Equal(fullPerson.PrefLabel, result[0].PrefLabel, "PrefLabel should be 'Pref Label")
 }
 
 func TestDelete(t *testing.T) {
