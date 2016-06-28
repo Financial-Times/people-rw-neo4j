@@ -12,7 +12,7 @@ type person struct {
 	Salutation     string       `json:"salutation,omitempty"`
 	Aliases        []string     `json:"aliases,omitempty"`
 	EmailAddress   string       `json:"emailAddress,omitempty"`
-	TwitterHandle  string       `json:"twitterHandler,omitempty"`
+	TwitterHandle  string       `json:"twitterHandle,omitempty"`
 	Description    string       `json:"description,omitempty"`
 	DescriptionXML string       `json:"descriptionXML,omitempty"`
 	ImageURL       string       `json:"_imageUrl"` // TODO this is a temporary thing - needs to be integrated into images properly
