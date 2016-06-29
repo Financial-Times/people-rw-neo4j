@@ -26,12 +26,17 @@ var minimalPerson = person{
 }
 
 var fullPerson = person{
-	UUID:        fullPersonUuid,
-	Name:        "Full Person",
-	BirthYear:   1900,
-	Salutation:  "Dr.",
-	Identifiers: []identifier{fsIdentifier, firstTmeIdentifier, secondTmeIdentifier},
-	Aliases:     []string{"Diff Name"},
+	UUID:           fullPersonUuid,
+	Name:           "Full Person",
+	EmailAddress:   "email_address@example.com",
+	TwitterHandle:  "@twitter_handle",
+	Description:    "Plain text description",
+	DescriptionXML: "<p><strong>Richer</strong> description</p>",
+	BirthYear:      1900,
+	Salutation:     "Dr.",
+	ImageURL:       "http://media.ft.com/validColumnistImage.png",
+	Identifiers:    []identifier{fsIdentifier, firstTmeIdentifier, secondTmeIdentifier},
+	Aliases:        []string{"Diff Name"},
 }
 
 var fsIdentifier = identifier{
