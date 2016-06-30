@@ -25,21 +25,6 @@ Use gojson against a transformer endpoint to create a person struct and update t
 
 `curl http://ftaps35629-law1a-eu-t:8080/transformers/people/ad60f5b2-4306-349d-92d8-cf9d9572a6f6 | gojson -name=person`
 
-## Building
-
-This service is built and deployed via Jenkins.
-
-<a href="http://ftjen10085-lvpr-uk-p:8181/view/JOBS-people-rw-neo4j/job/people-rw-neo4j-build/">Build job</a>
-<a href="http://ftjen10085-lvpr-uk-p:8181/view/JOBS-people-rw-neo4j/job/people-rw-neo4j-deploy-test/">Deploy to Test job</a>
-<a href="http://ftjen10085-lvpr-uk-p:8181/view/JOBS-people-rw-neo4j/job/people-rw-neo4j-deploy-prod/">Deploy to Prod job</a>
-
-The build works via git tags. To prepare a new release
-- update the version in /puppet/ft-people_rw_neo4j/Modulefile, e.g. to 0.0.12 (If you get a 400 error in your jenkins job you haven't updated this)
-- git tag that commit using `git tag 0.0.12`
-- `git push --tags`
-
-The deploy also works via git tag and you can also select the environment to deploy to.
-
 ## Endpoints
 /people/{uuid}
 ### PUT
@@ -51,10 +36,13 @@ A successful PUT results in 200.
 
 We run queries in batches. If a batch fails, all failing requests will get a 500 server error response.
 
-Invalid json body input, or uuids that don't match between the path and the body will result in a 400 bad request response.
+Example PUT request:
+`curl -XPUT -H "X-Request-Id: 123" -H "Content-Type: application/json" localhost:8080/people/3fa70485-3a57-3b9b-9449-774b001cd965 --data '{"uuid":"3fa70485-3a57-3b9b-9449-774b001cd965", "birthYear": 1974, "salutation": "Mr", "salutation": "Mr",
+"twitterHandle": "@rwa", "description": "Some text", "descriptionXML": "Some text containing <strong>markup</strong>",
+"_imageUrl": "http://someimage.jpg","name":"Robert W. Addington", "identifiers":[{ "authority":"http://api.ft.com/system/FACTSET-PPL", "identifierValue":"000BJG-E"}]}'`
 
-Example:
-`curl -XPUT -H "X-Request-Id: 123" -H "Content-Type: application/json" localhost:8080/people/3fa70485-3a57-3b9b-9449-774b001cd965 --data '{"uuid":"3fa70485-3a57-3b9b-9449-774b001cd965", "birthYear": 1974, "salutation": "Mr", "name":"Robert W. Addington", "identifiers":[{ "authority":"http://api.ft.com/system/FACTSET-PPL", "identifierValue":"000BJG-E"}]}'`
+
+Invalid json body input, or uuids that don't match between the path and the body will result in a 400 bad request response.
 
 ### GET
 Thie internal read should return what got written (i.e., this isn't the public person read API)

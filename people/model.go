@@ -15,7 +15,7 @@ type person struct {
 	TwitterHandle  string       `json:"twitterHandle,omitempty"`
 	Description    string       `json:"description,omitempty"`
 	DescriptionXML string       `json:"descriptionXML,omitempty"`
-	ImageURL       string       `json:"_imageUrl"` // TODO this is a temporary thing - needs to be integrated into images properly
+	ImageURL       string       `json:"_imageUrl,omitempty"` // TODO this is a temporary thing - needs to be integrated into images properly
 }
 
 type identifier struct {
@@ -40,7 +40,7 @@ func (si SortedIdentifiers) Less(i, j int) bool {
 
 	if si[i].Authority == si[j].Authority {
 		return si[i].IdentifierValue < si[j].IdentifierValue
-	} else {
-		return si[i].Authority < si[j].Authority
 	}
+	return si[i].Authority < si[j].Authority
+
 }
