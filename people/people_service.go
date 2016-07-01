@@ -44,7 +44,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 									 identifiers,
 									 p.birthYear as birthYear,
 									 p.salutation as salutation,
-									 p.imageURL AS _imageURL	,
+									 p.imageURL AS _imageUrl,
 									 p.aliases as aliases`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,

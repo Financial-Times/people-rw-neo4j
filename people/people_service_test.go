@@ -74,6 +74,7 @@ func TestCreateAllValuesPresent(t *testing.T) {
 
 	assert.NoError(err)
 	assert.NotEmpty(storedPerson)
+	assert.Equal(fullPerson, storedPerson, "Retrieved person didn't match")
 }
 
 func TestCreateNotAllValuesPresent(t *testing.T) {
@@ -88,6 +89,7 @@ func TestCreateNotAllValuesPresent(t *testing.T) {
 
 	assert.NoError(err)
 	assert.NotEmpty(storedPerson)
+	assert.Equal(minimalPerson, storedPerson, "Retrieved person didn't match")
 }
 
 func TestCreateHandlesSpecialCharacters(t *testing.T) {
