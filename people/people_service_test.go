@@ -37,6 +37,11 @@ var fullPerson = person{
 	AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: fsIdentifier, UUIDS: []string{fullPersonUuid, fullPersonSecondUuid, fullPersonThirdUuid}, TME: []string{firstTmeIdentifier, secondTmeIdentifier}},
 	Aliases:                []string{"Diff Name"},
 	Types:                  defaultTypes,
+	EmailAddress:           "email_address@example.com",
+	TwitterHandle:          "@twitter_handle",
+	Description:            "Plain text description",
+	DescriptionXML:         "<p><strong>Richer</strong> description</p>",
+	ImageURL:               "http://media.ft.com/validColumnistImage.png",
 }
 
 const (
@@ -56,7 +61,11 @@ func TestCreateAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
 
-	readPeopleAndCompare(fullPerson, t, db)
+	storedPerson, _, err := peopleDriver.Read(fullPersonUuid)
+
+	assert.NoError(err)
+	assert.NotEmpty(storedPerson)
+	assert.Equal(fullPerson, storedPerson, "Retrieved person didn't match")
 }
 
 func TestCreateNotAllValuesPresent(t *testing.T) {
@@ -67,7 +76,11 @@ func TestCreateNotAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
 
-	readPeopleAndCompare(minimalPerson, t, db)
+	storedPerson, _, err := peopleDriver.Read(minimalPersonUuid)
+
+	assert.NoError(err)
+	assert.NotEmpty(storedPerson)
+	assert.Equal(minimalPerson, storedPerson, "Retrieved person didn't match")
 }
 
 func TestCreateHandlesSpecialCharacters(t *testing.T) {
