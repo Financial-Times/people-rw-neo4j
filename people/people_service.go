@@ -47,6 +47,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 						p.birthYear as birthYear,
 						p.salutation as salutation,
 						p.aliases as aliases,
+						p.imageURL as _imageUrl,
 						labels(p) as types,
 						{uuids:collect(distinct upp.value),
 							TME:collect(distinct tme.value),
@@ -67,18 +68,19 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 	result := results[0]
 
 	p := person{
-		UUID:                      result.UUID,
-		Name:                      result.Name,
-		EmailAddress:              result.EmailAddress,
-		TwitterHandle:             result.TwitterHandle,
-		Description:               result.Description,
-		DescriptionXML:            result.DescriptionXML,
-		BirthYear:                 result.BirthYear,
-		Salutation:                result.Salutation,
-		ImageURL:                  result.ImageURL,
-		AlternativeIdentifiers:    result.AlternativeIdentifiers,
-		Aliases:                   result.Aliases,
-		Types:                     result.Types,
+		UUID:                   result.UUID,
+		Name:                   result.Name,
+		PrefLabel:              result.PrefLabel,
+		EmailAddress:           result.EmailAddress,
+		TwitterHandle:          result.TwitterHandle,
+		Description:            result.Description,
+		DescriptionXML:         result.DescriptionXML,
+		BirthYear:              result.BirthYear,
+		Salutation:             result.Salutation,
+		ImageURL:               result.ImageURL,
+		AlternativeIdentifiers: result.AlternativeIdentifiers,
+		Aliases:                result.Aliases,
+		Types:                  result.Types,
 	}
 
 	return p, true, nil

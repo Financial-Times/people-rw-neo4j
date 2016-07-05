@@ -61,11 +61,7 @@ func TestCreateAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
 
-	storedPerson, _, err := peopleDriver.Read(fullPersonUuid)
-
-	assert.NoError(err)
-	assert.NotEmpty(storedPerson)
-	assert.Equal(fullPerson, storedPerson, "Retrieved person didn't match")
+	readPeopleAndCompare(fullPerson, t, db)
 }
 
 func TestCreateNotAllValuesPresent(t *testing.T) {
@@ -76,11 +72,7 @@ func TestCreateNotAllValuesPresent(t *testing.T) {
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
 
-	storedPerson, _, err := peopleDriver.Read(minimalPersonUuid)
-
-	assert.NoError(err)
-	assert.NotEmpty(storedPerson)
-	assert.Equal(minimalPerson, storedPerson, "Retrieved person didn't match")
+	readPeopleAndCompare(minimalPerson, t, db)
 }
 
 func TestCreateHandlesSpecialCharacters(t *testing.T) {
