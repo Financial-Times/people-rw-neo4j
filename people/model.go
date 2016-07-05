@@ -1,21 +1,19 @@
 package people
 
-import "sort"
-
-type SortedIdentifiers []identifier
-
 type person struct {
-	UUID           string       `json:"uuid"`
-	BirthYear      int          `json:"birthYear,omitempty"`
-	Identifiers    []identifier `json:"identifiers,omitempty"`
-	Name           string       `json:"name,omitempty"`
-	Salutation     string       `json:"salutation,omitempty"`
-	Aliases        []string     `json:"aliases,omitempty"`
-	EmailAddress   string       `json:"emailAddress,omitempty"`
-	TwitterHandle  string       `json:"twitterHandle,omitempty"`
-	Description    string       `json:"description,omitempty"`
-	DescriptionXML string       `json:"descriptionXML,omitempty"`
-	ImageURL       string       `json:"_imageUrl,omitempty"` // TODO this is a temporary thing - needs to be integrated into images properly
+	UUID                   string                 `json:"uuid"`
+	BirthYear              int                    `json:"birthYear,omitempty"`
+	AlternativeIdentifiers alternativeIdentifiers `json:"alternativeIdentifiers"`
+	Name                   string                 `json:"name,omitempty"`
+	PrefLabel              string                 `json:"prefLabel"`
+	Salutation             string                 `json:"salutation,omitempty"`
+	Aliases                []string               `json:"aliases,omitempty"`
+	EmailAddress           string                 `json:"emailAddress,omitempty"`
+	TwitterHandle          string                 `json:"twitterHandle,omitempty"`
+	Description            string                 `json:"description,omitempty"`
+	DescriptionXML         string                 `json:"descriptionXML,omitempty"`
+	ImageURL               string                 `json:"_imageUrl,omitempty"` // TODO this is a temporary thing - needs to be integrated into images properly
+	Types                  []string               `json:"types,omitempty"`
 }
 
 type identifier struct {
@@ -23,24 +21,14 @@ type identifier struct {
 	IdentifierValue string `json:"identifierValue"`
 }
 
-func sortIdentifiers(iden []identifier) {
-	sort.Sort(SortedIdentifiers(iden))
+type alternativeIdentifiers struct {
+	TME               []string `json:"TME,omitempty"`
+	UUIDS             []string `json:"uuids"`
+	FactsetIdentifier string   `json:"factsetIdentifier,omitempty"`
 }
 
-// these three are the implementation of sort interface
-func (si SortedIdentifiers) Len() int {
-	return len(si)
-}
-
-func (si SortedIdentifiers) Swap(i, j int) {
-	si[i], si[j] = si[j], si[i]
-}
-
-func (si SortedIdentifiers) Less(i, j int) bool {
-
-	if si[i].Authority == si[j].Authority {
-		return si[i].IdentifierValue < si[j].IdentifierValue
-	}
-	return si[i].Authority < si[j].Authority
-
-}
+const (
+	tmeIdentifierLabel     = "TMEIdentifier"
+	uppIdentifierLabel     = "UPPIdentifier"
+	factsetIdentifierLabel = "FactsetIdentifier"
+)
