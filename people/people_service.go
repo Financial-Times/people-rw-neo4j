@@ -144,7 +144,7 @@ func (s service) Write(thing interface{}) error {
 	deleteEntityRelationshipsQuery := &neoism.CypherQuery{
 		Statement: `MATCH (t:Thing {uuid:{uuid}})
 					OPTIONAL MATCH (i:Identifier)-[ir:IDENTIFIES]->(t)
-					DELETE ir, i`,
+					DETACH DELETE ir, i`,
 		Parameters: map[string]interface{}{
 			"uuid": p.UUID,
 		},
@@ -205,7 +205,7 @@ func (s service) Delete(uuid string) (bool, error) {
 			OPTIONAL MATCH (p)<-[ir:IDENTIFIES]-(i:Identifier)
 			REMOVE p:Concept
 			REMOVE p:Person
-			DELETE ir, i
+			DETACH DELETE ir, i
 			SET p={props}
 		`,
 		Parameters: map[string]interface{}{
