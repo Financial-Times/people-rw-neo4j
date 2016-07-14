@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Financial-Times/neo-utils-go/neoutils"
+	"github.com/Financial-Times/up-rw-app-api-go/rwapi"
 	"github.com/jmcvetta/neoism"
 )
 
@@ -85,6 +86,36 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 
 	return p, true, nil
 
+}
+
+func (s service) IDs(ids chan<- rwapi.IDEntry, errCh chan<- error, stopChan <-chan struct{}) {
+	batchSize := 4096
+
+	for skip := 0; ; skip += batchSize {
+		results := []rwapi.IDEntry{}
+		readQuery := &neoism.CypherQuery{
+			Statement: `MATCH (p:Person) RETURN p.uuid as id SKIP {skip} LIMIT {limit}`,
+			Parameters: map[string]interface{}{
+				"limit": batchSize,
+				"skip":  skip,
+			},
+			Result: &results,
+		}
+		if err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil {
+			errCh <- err
+			return
+		}
+		if len(results) == 0 {
+			return
+		}
+		for _, result := range results {
+			select {
+			case ids <- result:
+			case <-stopChan:
+				return
+			}
+		}
+	}
 }
 
 func (s service) Write(thing interface{}) error {

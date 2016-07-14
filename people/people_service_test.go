@@ -4,12 +4,16 @@ package people
 
 import (
 	"fmt"
-	"github.com/Financial-Times/neo-utils-go/neoutils"
-	"github.com/jmcvetta/neoism"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"sort"
+	"sync"
 	"testing"
+
+	"github.com/Financial-Times/neo-utils-go/neoutils"
+	"github.com/Financial-Times/up-rw-app-api-go/rwapi"
+	"github.com/jmcvetta/neoism"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -200,6 +204,92 @@ func TestDelete(t *testing.T) {
 	assert.NoError(err, "Error trying to find person for uuid %s", minimalPersonUuid)
 }
 
+func TestIDs(t *testing.T) {
+
+	assert := assert.New(t)
+	db := getDatabaseConnection(assert)
+	peopleDriver := getCypherDriver(db)
+
+	uuids := make(map[string]struct{})
+	toDelete := []string{}
+
+	defer func() {
+		var wg sync.WaitGroup
+		for _, u := range toDelete {
+			wg.Add(1)
+			go func(u string) {
+				defer wg.Done()
+				peopleDriver.Delete(u)
+			}(u)
+		}
+		wg.Wait()
+	}()
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 3000; i++ {
+		u := uuid.New()
+		uuids[u] = struct{}{}
+		toDelete = append(toDelete, u)
+		wg.Add(1)
+		go func(i int, u string) {
+			defer wg.Done()
+
+			err := peopleDriver.Write(
+				person{
+					UUID:       u,
+					Name:       fmt.Sprintf("Test %d", i),
+					BirthYear:  1066,
+					Salutation: "Dr",
+					AlternativeIdentifiers: alternativeIdentifiers{
+						FactsetIdentifier: fmt.Sprintf("FACTSET_ID_%d", i),
+						UUIDS:             []string{u},
+					},
+					Aliases: []string{fmt.Sprintf("alias for %d", i)},
+				},
+			)
+			assert.NoError(err)
+		}(i, u)
+	}
+
+	wg.Wait()
+
+	ids := make(chan rwapi.IDEntry)
+	errs := make(chan error, 1)
+	stop := make(chan struct{})
+	defer close(stop)
+
+	go func() {
+		peopleDriver.IDs(ids, errs, stop)
+		close(ids)
+	}()
+
+readloop:
+	for {
+		select {
+		case id, ok := <-ids:
+			if !ok {
+				break readloop
+			}
+			_, found := uuids[id.ID]
+			if !found {
+				t.Errorf("unexpected uuid %s", id.ID)
+			} else {
+				delete(uuids, id.ID)
+			}
+
+		case err := <-errs:
+			t.Error(err)
+			break readloop
+		}
+	}
+
+	for u, _ := range uuids {
+		t.Errorf("missing uuid %s", u)
+	}
+
+}
+
 func readPeopleAndCompare(expected person, t *testing.T, db *neoism.Database) {
 	sort.Strings(expected.Types)
 	sort.Strings(expected.AlternativeIdentifiers.TME)
@@ -274,7 +364,7 @@ func checkDbClean(db *neoism.Database, t *testing.T) {
 }
 
 func getCypherDriver(db *neoism.Database) service {
-	cr := NewCypherPeopleService(neoutils.NewBatchCypherRunner(neoutils.StringerDb{db}, 3), db)
+	cr := NewCypherPeopleService(neoutils.NewBatchCypherRunner(neoutils.StringerDb{db}, 1024), db)
 	cr.Initialise()
 	return cr
 }
