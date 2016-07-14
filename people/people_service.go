@@ -120,10 +120,16 @@ func (s service) IDs(ids chan<- rwapi.IDEntry, errCh chan<- error, stopChan <-ch
 
 func (s service) Write(thing interface{}) error {
 
+	hash, err := WriteHash(thing)
+	if err != nil {
+		return err
+	}
+
 	p := thing.(person)
 
 	params := map[string]interface{}{
 		"uuid": p.UUID,
+		"hash": hash,
 	}
 
 	if p.Name != "" {
