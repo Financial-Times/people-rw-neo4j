@@ -1,7 +1,8 @@
 package people
 
 import (
-	"fmt"
+	"encoding/hex"
+
 	"github.com/spaolacci/murmur3"
 	"github.com/ugorji/go/codec"
 )
@@ -18,5 +19,5 @@ func writeHash(thing interface{}) (string, error) {
 	if err := enc.Encode(thing); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
