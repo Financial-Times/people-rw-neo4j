@@ -6,11 +6,15 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
+var handle = func() codec.JsonHandle {
+	h := codec.JsonHandle{}
+	h.Canonical = true
+	return h
+}()
+
 func WriteHash(thing interface{}) (string, error) {
 	h := murmur3.New128()
-	handle := &codec.JsonHandle{}
-	handle.Canonical = true
-	enc := codec.NewEncoder(h, handle)
+	enc := codec.NewEncoder(h, &handle)
 	if err := enc.Encode(thing); err != nil {
 		return "", err
 	}
