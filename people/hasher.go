@@ -12,7 +12,7 @@ var handle = func() codec.JsonHandle {
 	return h
 }()
 
-func WriteHash(thing interface{}) (string, error) {
+func writeHash(thing interface{}) (string, error) {
 	h := murmur3.New128()
 	enc := codec.NewEncoder(h, &handle)
 	if err := enc.Encode(thing); err != nil {

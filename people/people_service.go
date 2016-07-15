@@ -120,7 +120,7 @@ func (s service) IDs(ids chan<- rwapi.IDEntry, errCh chan<- error, stopChan <-ch
 
 func (s service) Write(thing interface{}) error {
 
-	hash, err := WriteHash(thing)
+	hash, err := writeHash(thing)
 	if err != nil {
 		return err
 	}
