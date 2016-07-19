@@ -103,7 +103,7 @@ func (s service) IDs(ids chan<- rwapi.IDEntry, errCh chan<- error, stopChan <-ch
 	for skip := 0; ; skip += batchSize {
 		results := []rwapi.IDEntry{}
 		readQuery := &neoism.CypherQuery{
-			Statement: `MATCH (p:Person) RETURN p.uuid as id SKIP {skip} LIMIT {limit}`,
+			Statement: `MATCH (p:Person) RETURN p.uuid as id, p.hash as hash SKIP {skip} LIMIT {limit}`,
 			Parameters: map[string]interface{}{
 				"limit": batchSize,
 				"skip":  skip,
@@ -129,10 +129,16 @@ func (s service) IDs(ids chan<- rwapi.IDEntry, errCh chan<- error, stopChan <-ch
 
 func (s service) Write(thing interface{}) error {
 
+	hash, err := writeHash(thing)
+	if err != nil {
+		return err
+	}
+
 	p := thing.(person)
 
 	params := map[string]interface{}{
 		"uuid": p.UUID,
+		"hash": hash,
 	}
 
 	if p.Name != "" {
