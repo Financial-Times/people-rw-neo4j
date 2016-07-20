@@ -254,35 +254,15 @@ func TestIDs(t *testing.T) {
 
 	wg.Wait()
 
-	ids := make(chan rwapi.IDEntry)
-	errs := make(chan error, 1)
-	stop := make(chan struct{})
-	defer close(stop)
-
-	go func() {
-		peopleDriver.IDs(ids, errs, stop)
-		close(ids)
-	}()
-
-readloop:
-	for {
-		select {
-		case id, ok := <-ids:
-			if !ok {
-				break readloop
-			}
-			_, found := uuids[id.ID]
-			if !found {
-				t.Errorf("unexpected uuid %s", id.ID)
-			} else {
-				delete(uuids, id.ID)
-			}
-
-		case err := <-errs:
-			t.Error(err)
-			break readloop
+	assert.NoError(peopleDriver.IDs(func(id rwapi.IDEntry) (bool, error) {
+		_, found := uuids[id.ID]
+		if !found {
+			t.Errorf("unexpected uuid %s", id.ID)
+		} else {
+			delete(uuids, id.ID)
 		}
-	}
+		return true, nil
+	}))
 
 	for u, _ := range uuids {
 		t.Errorf("missing uuid %s", u)

@@ -97,7 +97,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 
 }
 
-func (s service) IDs(ids chan<- rwapi.IDEntry, errCh chan<- error, stopChan <-chan struct{}) {
+func (s service) IDs(f func(id rwapi.IDEntry) (bool, error)) error {
 	batchSize := 4096
 
 	for skip := 0; ; skip += batchSize {
@@ -111,17 +111,15 @@ func (s service) IDs(ids chan<- rwapi.IDEntry, errCh chan<- error, stopChan <-ch
 			Result: &results,
 		}
 		if err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil {
-			errCh <- err
-			return
+			return err
 		}
 		if len(results) == 0 {
-			return
+			return nil
 		}
 		for _, result := range results {
-			select {
-			case ids <- result:
-			case <-stopChan:
-				return
+			more, err := f(result)
+			if !more || err != nil {
+				return err
 			}
 		}
 	}
