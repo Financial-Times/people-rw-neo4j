@@ -10,19 +10,18 @@ import (
 )
 
 type service struct {
-	cypherRunner neoutils.CypherRunner
-	indexManager neoutils.IndexManager
+	conn neoutils.NeoConnection
 }
 
 // NewCypherPeopleService provides functions for create, update, delete operations on people in Neo4j,
 // plus other utility functions needed for a service
-func NewCypherPeopleService(cypherRunner neoutils.CypherRunner, indexManager neoutils.IndexManager) service {
-	return service{cypherRunner, indexManager}
+func NewCypherPeopleService(cypherRunner neoutils.NeoConnection) service {
+	return service{cypherRunner}
 }
 
 func (s service) Initialise() error {
 
-	err := neoutils.EnsureIndexes(s.indexManager,  map[string]string{
+	err := s.conn.EnsureIndexes(map[string]string{
 		"Identifier": "value",
 	})
 
@@ -30,7 +29,7 @@ func (s service) Initialise() error {
 		return err
 	}
 
-	return neoutils.EnsureConstraints(s.indexManager, map[string]string{
+	return s.conn.EnsureConstraints(map[string]string{
 		"Thing":             "uuid",
 		"Concept":           "uuid",
 		"Person":            "uuid",
@@ -68,7 +67,7 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		Result: &results,
 	}
 
-	if err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil || len(results) == 0 {
+	if err := s.conn.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil || len(results) == 0 {
 		return person{}, false, err
 	}
 
@@ -110,7 +109,7 @@ func (s service) IDs(f func(id rwapi.IDEntry) (bool, error)) error {
 			},
 			Result: &results,
 		}
-		if err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil {
+		if err := s.conn.CypherBatch([]*neoism.CypherQuery{readQuery}); err != nil {
 			return err
 		}
 		if len(results) == 0 {
@@ -224,7 +223,7 @@ func (s service) Write(thing interface{}) error {
 		queries = append(queries, createNewIdentifierQuery(p.UUID, factsetIdentifierLabel, p.AlternativeIdentifiers.FactsetIdentifier))
 	}
 
-	return s.cypherRunner.CypherBatch(queries)
+	return s.conn.CypherBatch(queries)
 }
 
 func createNewIdentifierQuery(uuid string, identifierLabel string, identifierValue string) *neoism.CypherQuery {
@@ -274,7 +273,7 @@ func (s service) Delete(uuid string) (bool, error) {
 		},
 	}
 
-	err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{clearNode, removeNodeIfUnused})
+	err := s.conn.CypherBatch([]*neoism.CypherQuery{clearNode, removeNodeIfUnused})
 
 	s1, err := clearNode.Stats()
 	if err != nil {
@@ -296,7 +295,7 @@ func (s service) DecodeJSON(dec *json.Decoder) (interface{}, string, error) {
 }
 
 func (s service) Check() error {
-	return neoutils.Check(s.cypherRunner)
+	return neoutils.Check(s.conn)
 }
 
 func (s service) Count() (int, error) {
@@ -310,7 +309,7 @@ func (s service) Count() (int, error) {
 		Result:    &results,
 	}
 
-	err := s.cypherRunner.CypherBatch([]*neoism.CypherQuery{query})
+	err := s.conn.CypherBatch([]*neoism.CypherQuery{query})
 
 	if err != nil {
 		return 0, err

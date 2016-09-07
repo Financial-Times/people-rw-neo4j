@@ -139,7 +139,7 @@ func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 		Result: &result,
 	}
 
-	err := peopleDriver.cypherRunner.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
+	err := peopleDriver.conn.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
 	assert.NoError(err)
 	assert.Equal("alias 1", result[0].Aliases[0], "PrefLabel should be 'alias 1")
 }
@@ -180,7 +180,7 @@ func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
 		Result: &result,
 	}
 
-	err := peopleDriver.cypherRunner.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
+	err := peopleDriver.conn.CypherBatch([]*neoism.CypherQuery{getPrefLabelQuery})
 	assert.NoError(err)
 	assert.Equal(fullPerson.PrefLabel, result[0].PrefLabel, "PrefLabel should be 'Pref Label")
 }
@@ -270,7 +270,7 @@ func TestIDs(t *testing.T) {
 
 }
 
-func readPeopleAndCompare(expected person, t *testing.T, db *neoism.Database) {
+func readPeopleAndCompare(expected person, t *testing.T, db neoutils.NeoConnection) {
 	sort.Strings(expected.Types)
 	sort.Strings(expected.AlternativeIdentifiers.TME)
 	sort.Strings(expected.AlternativeIdentifiers.UUIDS)
@@ -287,25 +287,27 @@ func readPeopleAndCompare(expected person, t *testing.T, db *neoism.Database) {
 	assert.EqualValues(t, expected, actualPeople)
 }
 
-func getDatabaseConnectionAndCheckClean(t *testing.T, assert *assert.Assertions) *neoism.Database {
+func getDatabaseConnectionAndCheckClean(t *testing.T, assert *assert.Assertions) neoutils.NeoConnection {
 	db := getDatabaseConnection(assert)
 	cleanDB(db, t, assert)
 	checkDbClean(db, t)
 	return db
 }
 
-func getDatabaseConnection(assert *assert.Assertions) *neoism.Database {
+func getDatabaseConnection(assert *assert.Assertions) neoutils.NeoConnection {
 	url := os.Getenv("NEO4J_TEST_URL")
 	if url == "" {
 		url = "http://localhost:7474/db/data"
 	}
 
-	db, err := neoism.Connect(url)
+	conf := neoutils.DefaultConnectionConfig()
+	conf.Transactional = false
+	db, err := neoutils.Connect(url, conf)
 	assert.NoError(err, "Failed to connect to Neo4j")
 	return db
 }
 
-func cleanDB(db *neoism.Database, t *testing.T, assert *assert.Assertions) {
+func cleanDB(db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) {
 	qs := []*neoism.CypherQuery{
 		{
 			Statement: fmt.Sprintf("MATCH (mp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE mp, i", minimalPersonUuid),
@@ -322,7 +324,7 @@ func cleanDB(db *neoism.Database, t *testing.T, assert *assert.Assertions) {
 	assert.NoError(err)
 }
 
-func checkDbClean(db *neoism.Database, t *testing.T) {
+func checkDbClean(db neoutils.NeoConnection, t *testing.T) {
 	assert := assert.New(t)
 
 	result := []struct {
@@ -338,13 +340,13 @@ func checkDbClean(db *neoism.Database, t *testing.T) {
 		},
 		Result: &result,
 	}
-	err := db.Cypher(&checkGraph)
+	err := db.CypherBatch([]*neoism.CypherQuery{&checkGraph})
 	assert.NoError(err)
 	assert.Empty(result)
 }
 
-func getCypherDriver(db *neoism.Database) service {
-	cr := NewCypherPeopleService(neoutils.NewBatchCypherRunner(neoutils.StringerDb{db}, 1024), db)
+func getCypherDriver(db neoutils.NeoConnection) service {
+	cr := NewCypherPeopleService(db)
 	cr.Initialise()
 	return cr
 }
