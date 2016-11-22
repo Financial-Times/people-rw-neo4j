@@ -155,7 +155,7 @@ func TestAddingPersonWithExistingIdentifiersShouldFail(t *testing.T) {
 	assert.NoError(cypherDriver.Write(fullPerson))
 	err := cypherDriver.Write(minimalPerson)
 	assert.Error(err)
-	assert.IsType(&neoutils.ConstraintViolationError{}, err)
+	assert.IsType(rwapi.ConstraintOrTransactionError{}, err)
 }
 
 func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
