@@ -299,7 +299,7 @@ func getDatabaseConnectionAndCheckClean(t *testing.T, assert *assert.Assertions)
 func getDatabaseConnection(assert *assert.Assertions) neoutils.NeoConnection {
 	url := os.Getenv("NEO4J_TEST_URL")
 	if url == "" {
-		url = "http://192.168.99.100:7474/db/data"
+		url = "http://localhost:7474/db/data"
 	}
 
 	conf := neoutils.DefaultConnectionConfig()
