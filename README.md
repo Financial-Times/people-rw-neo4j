@@ -44,7 +44,7 @@ Example PUT request:
     `curl -XPUT localhost:8080/people/3fa70485-3a57-3b9b-9449-774b001cd965 \
          -H "X-Request-Id: 123" \
          -H "Content-Type: application/json" \
-         -d '{"uuid":"3fa70485-3a57-3b9b-9449-774b001cd965","birthYear": 1974,"salutation": "Mr","name":"Robert W. Addington","prefLabel":"Robert Addington","twitterHandle": "@rwa","description": "Some text","descriptionXML": "Some text containing <strong>markup</strong>","_imageUrl": "http://someimage.jpg","alternativeIdentifiers":{"TME":["MTE3-U3ViamVjdHM="],"uuids":["3fa70485-3a57-3b9b-9449-774b001cd965","6a2a0170-6afa-4bcc-b427-430268d2ac50"],"factsetIdentifier":"000BJG-E"},"type":"People"}'`
+         -d '{"uuid":"3fa70485-3a57-3b9b-9449-774b001cd965","birthYear":1974,"salutation":"Mr","name":"Robert W. Addington","prefLabel":"Robert Addington","twitterHandle":"@rwa","facebookProfile":"raddington","linkedinProfile":"robert-addington","description": "Some text","descriptionXML": "Some text containing <strong>markup</strong>","_imageUrl": "http://someimage.jpg","alternativeIdentifiers":{"TME":["MTE3-U3ViamVjdHM="],"uuids":["3fa70485-3a57-3b9b-9449-774b001cd965","6a2a0170-6afa-4bcc-b427-430268d2ac50"],"factsetIdentifier":"000BJG-E"},"type":"People"}'`
 
 The type field is not currently validated - instead, the People Writer writes type People and its parent types (Thing, Concept) as labels for People.
 

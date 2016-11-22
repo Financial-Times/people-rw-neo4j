@@ -10,6 +10,8 @@ type person struct {
 	Aliases                []string               `json:"aliases,omitempty"`
 	EmailAddress           string                 `json:"emailAddress,omitempty"`
 	TwitterHandle          string                 `json:"twitterHandle,omitempty"`
+	FacebookProfile        string                 `json:"facebookProfile,omitempty"`
+	LinkedinProfile        string                 `json:"linkedinProfile,omitempty"`
 	Description            string                 `json:"description,omitempty"`
 	DescriptionXML         string                 `json:"descriptionXML,omitempty"`
 	ImageURL               string                 `json:"_imageUrl,omitempty"` // TODO this is a temporary thing - needs to be integrated into images properly

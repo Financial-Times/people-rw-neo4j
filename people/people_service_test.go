@@ -43,6 +43,8 @@ var fullPerson = person{
 	Types:                  defaultTypes,
 	EmailAddress:           "email_address@example.com",
 	TwitterHandle:          "@twitter_handle",
+	FacebookProfile:        "facebook-profile",
+	LinkedinProfile:        "linkedin-profile",
 	Description:            "Plain text description",
 	DescriptionXML:         "<p><strong>Richer</strong> description</p>",
 	ImageURL:               "http://media.ft.com/validColumnistImage.png",
@@ -153,7 +155,7 @@ func TestAddingPersonWithExistingIdentifiersShouldFail(t *testing.T) {
 	assert.NoError(cypherDriver.Write(fullPerson))
 	err := cypherDriver.Write(minimalPerson)
 	assert.Error(err)
-	assert.IsType(&neoutils.ConstraintViolationError{}, err)
+	assert.IsType(rwapi.ConstraintOrTransactionError{}, err)
 }
 
 func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
@@ -164,7 +166,7 @@ func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
 
 	storedPerson := peopleDriver.Write(fullPerson)
 
-	fmt.Printf("", storedPerson)
+	fmt.Printf("%v", storedPerson)
 
 	result := []struct {
 		PrefLabel string `json:"t.prefLabel"`
