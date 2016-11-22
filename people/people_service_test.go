@@ -43,6 +43,8 @@ var fullPerson = person{
 	Types:                  defaultTypes,
 	EmailAddress:           "email_address@example.com",
 	TwitterHandle:          "@twitter_handle",
+	FacebookProfile:        "facebook-profile",
+	LinkedinProfile:        "linkedin-profile",
 	Description:            "Plain text description",
 	DescriptionXML:         "<p><strong>Richer</strong> description</p>",
 	ImageURL:               "http://media.ft.com/validColumnistImage.png",
@@ -164,7 +166,7 @@ func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
 
 	storedPerson := peopleDriver.Write(fullPerson)
 
-	fmt.Printf("", storedPerson)
+	fmt.Printf("%v", storedPerson)
 
 	result := []struct {
 		PrefLabel string `json:"t.prefLabel"`
@@ -297,7 +299,7 @@ func getDatabaseConnectionAndCheckClean(t *testing.T, assert *assert.Assertions)
 func getDatabaseConnection(assert *assert.Assertions) neoutils.NeoConnection {
 	url := os.Getenv("NEO4J_TEST_URL")
 	if url == "" {
-		url = "http://localhost:7474/db/data"
+		url = "http://192.168.99.100:7474/db/data"
 	}
 
 	conf := neoutils.DefaultConnectionConfig()

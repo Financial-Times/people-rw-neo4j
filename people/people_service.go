@@ -50,6 +50,8 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 						p.name as name,
 						p.emailAddress as emailAddress,
 						p.twitterHandle as twitterHandle,
+						p.facebookProfile as facebookProfile,
+						p.linkedinProfile as linkedinProfile,
 						p.description as description,
 						p.descriptionXML as descriptionXML,
 						p.prefLabel as prefLabel,
@@ -82,6 +84,8 @@ func (s service) Read(uuid string) (interface{}, bool, error) {
 		PrefLabel:              result.PrefLabel,
 		EmailAddress:           result.EmailAddress,
 		TwitterHandle:          result.TwitterHandle,
+		FacebookProfile:        result.FacebookProfile,
+		LinkedinProfile:        result.LinkedinProfile,
 		Description:            result.Description,
 		DescriptionXML:         result.DescriptionXML,
 		BirthYear:              result.BirthYear,
@@ -160,6 +164,14 @@ func (s service) Write(thing interface{}) error {
 
 	if p.TwitterHandle != "" {
 		params["twitterHandle"] = p.TwitterHandle
+	}
+
+	if p.FacebookProfile != "" {
+		params["facebookProfile"] = p.FacebookProfile
+	}
+
+	if p.FacebookProfile != "" {
+		params["linkedinProfile"] = p.LinkedinProfile
 	}
 
 	if p.Description != "" {
