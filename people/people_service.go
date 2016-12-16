@@ -257,10 +257,8 @@ func (s service) Delete(uuid string) (bool, error) {
 	clearNode := &neoism.CypherQuery{
 		Statement: `
 			MATCH (p:Thing {uuid: {uuid}})
-			OPTIONAL MATCH (p)<-[ir:IDENTIFIES]-(i:Identifier)
 			REMOVE p:Concept
 			REMOVE p:Person
-			DELETE ir, i
 			SET p={props}
 		`,
 		Parameters: map[string]interface{}{
@@ -272,13 +270,15 @@ func (s service) Delete(uuid string) (bool, error) {
 		IncludeStats: true,
 	}
 
+	// Please note that this keeps the Identifiers as Identifiers are NOT a Thing
 	removeNodeIfUnused := &neoism.CypherQuery{
 		Statement: `
-			MATCH (p:Thing {uuid: {uuid}})
-			OPTIONAL MATCH (p)-[a]-(x)
-			WITH p, count(a) AS relCount
+			MATCH (thing:Thing {uuid: {uuid}})
+			OPTIONAL MATCH (thing)-[ir:IDENTIFIES]-(id:Identifier)
+			OPTIONAL MATCH (thing)-[a]-(x:Thing)
+			WITH ir, id, thing, count(a) AS relCount
 			WHERE relCount = 0
-			DELETE p
+			DELETE ir, id, thing
 		`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
@@ -288,6 +288,7 @@ func (s service) Delete(uuid string) (bool, error) {
 	err := s.conn.CypherBatch([]*neoism.CypherQuery{clearNode, removeNodeIfUnused})
 
 	s1, err := clearNode.Stats()
+
 	if err != nil {
 		return false, err
 	}
