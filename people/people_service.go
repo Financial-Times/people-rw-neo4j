@@ -239,8 +239,7 @@ func (s service) Write(thing interface{}) error {
 
 func createNewIdentifierQuery(uuid string, identifierLabel string, identifierValue string) *neoism.CypherQuery {
 	statementTemplate := fmt.Sprintf(`MERGE (t:Thing {uuid:{uuid}})
-					CREATE (i:Identifier {value:{value}})
-					MERGE (t)<-[:IDENTIFIES]-(i)
+					CREATE (i:Identifier {value:{value}})-[:IDENTIFIES]->(t)
 					set i : %s `, identifierLabel)
 	query := &neoism.CypherQuery{
 		Statement: statementTemplate,
