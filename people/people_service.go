@@ -270,7 +270,8 @@ func (s service) Delete(uuid string) (bool, error) {
 		IncludeStats: true,
 	}
 
-	// Please note that this keeps the Identifiers as Identifiers are NOT a Thing
+	// Please note that this removes the Identifiers if there are no other relationships attached to this
+	// as Identifiers are not a 'Thing' only an Identifier
 	removeNodeIfUnused := &neoism.CypherQuery{
 		Statement: `
 			MATCH (thing:Thing {uuid: {uuid}})
