@@ -197,9 +197,8 @@ func (s service) Write(thing interface{}) error {
 	}
 
 	deleteEntityRelationshipsQuery := &neoism.CypherQuery{
-		Statement: `MATCH (t:Thing {uuid:{uuid}})
-					OPTIONAL MATCH (i:Identifier)-[ir:IDENTIFIES]->(t)
-					DELETE ir, i`,
+		Statement: `MATCH (i:Identifier)-[ir:IDENTIFIES]->(t:Thing {uuid:{uuid}})
+				DELETE ir, i`,
 		Parameters: map[string]interface{}{
 			"uuid": p.UUID,
 		},
