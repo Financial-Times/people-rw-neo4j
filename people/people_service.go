@@ -197,9 +197,8 @@ func (s service) Write(thing interface{}) error {
 	}
 
 	deleteEntityRelationshipsQuery := &neoism.CypherQuery{
-		Statement: `MATCH (t:Thing {uuid:{uuid}})
-					OPTIONAL MATCH (i:Identifier)-[ir:IDENTIFIES]->(t)
-					DELETE ir, i`,
+		Statement: `MATCH (i:Identifier)-[ir:IDENTIFIES]->(t:Thing {uuid:{uuid}})
+				DELETE ir, i`,
 		Parameters: map[string]interface{}{
 			"uuid": p.UUID,
 		},
@@ -240,8 +239,7 @@ func (s service) Write(thing interface{}) error {
 
 func createNewIdentifierQuery(uuid string, identifierLabel string, identifierValue string) *neoism.CypherQuery {
 	statementTemplate := fmt.Sprintf(`MERGE (t:Thing {uuid:{uuid}})
-					CREATE (i:Identifier {value:{value}})
-					MERGE (t)<-[:IDENTIFIES]-(i)
+					CREATE (i:Identifier {value:{value}})-[:IDENTIFIES]->(t)
 					set i : %s `, identifierLabel)
 	query := &neoism.CypherQuery{
 		Statement: statementTemplate,
@@ -257,10 +255,8 @@ func (s service) Delete(uuid string) (bool, error) {
 	clearNode := &neoism.CypherQuery{
 		Statement: `
 			MATCH (p:Thing {uuid: {uuid}})
-			OPTIONAL MATCH (p)<-[ir:IDENTIFIES]-(i:Identifier)
 			REMOVE p:Concept
 			REMOVE p:Person
-			DELETE ir, i
 			SET p={props}
 		`,
 		Parameters: map[string]interface{}{
@@ -272,13 +268,16 @@ func (s service) Delete(uuid string) (bool, error) {
 		IncludeStats: true,
 	}
 
+	// Please note that this removes the Identifiers if there are no other relationships attached to this
+	// as Identifiers are not a 'Thing' only an Identifier
 	removeNodeIfUnused := &neoism.CypherQuery{
 		Statement: `
-			MATCH (p:Thing {uuid: {uuid}})
-			OPTIONAL MATCH (p)-[a]-(x)
-			WITH p, count(a) AS relCount
+			MATCH (thing:Thing {uuid: {uuid}})
+			OPTIONAL MATCH (thing)-[ir:IDENTIFIES]-(id:Identifier)
+			OPTIONAL MATCH (thing)-[a]-(x:Thing)
+			WITH ir, id, thing, count(a) AS relCount
 			WHERE relCount = 0
-			DELETE p
+			DELETE ir, id, thing
 		`,
 		Parameters: map[string]interface{}{
 			"uuid": uuid,
@@ -288,6 +287,7 @@ func (s service) Delete(uuid string) (bool, error) {
 	err := s.conn.CypherBatch([]*neoism.CypherQuery{clearNode, removeNodeIfUnused})
 
 	s1, err := clearNode.Stats()
+
 	if err != nil {
 		return false, err
 	}

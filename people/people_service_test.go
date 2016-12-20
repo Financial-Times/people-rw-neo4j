@@ -9,6 +9,10 @@ import (
 	"sync"
 	"testing"
 
+	"encoding/json"
+	"github.com/Financial-Times/annotations-rw-neo4j/annotations"
+	"github.com/Financial-Times/base-ft-rw-app-go/baseftrwapp"
+	"github.com/Financial-Times/content-rw-neo4j/content"
 	"github.com/Financial-Times/neo-utils-go/neoutils"
 	"github.com/Financial-Times/up-rw-app-api-go/rwapi"
 	"github.com/jmcvetta/neoism"
@@ -22,6 +26,7 @@ const (
 	fullPersonSecondUuid = "026bc6ab-3581-476f-bdee-ad44934d8255"
 	fullPersonThirdUuid  = "38431a92-dda3-4eb9-a367-60145a8e659f"
 	uniquePersonUuid     = "bb596d64-78c5-4b00-a88f-e8248c956073"
+	contentUUID          = "3fc9fe3e-af8c-4f7f-961a-e5065392bb31"
 )
 
 var minimalPerson = person{
@@ -63,7 +68,8 @@ func TestCreateAllValuesPresent(t *testing.T) {
 
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{fullPersonUuid}, db, t, assert)
 
 	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
 
@@ -74,7 +80,8 @@ func TestCreateNotAllValuesPresent(t *testing.T) {
 	assert := assert.New(t)
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{minimalPersonUuid}, db, t, assert)
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
 
@@ -85,7 +92,8 @@ func TestCreateHandlesSpecialCharacters(t *testing.T) {
 	assert := assert.New(t)
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{uniquePersonUuid}, db, t, assert)
 
 	personToWrite := person{UUID: uniquePersonUuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr", AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: "FACTSET_ID", UUIDS: []string{uniquePersonUuid}, TME: []string{}}, Aliases: []string{"alias 1", "alias 2"}, Types: defaultTypes}
 
@@ -98,7 +106,8 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 	assert := assert.New(t)
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{fullPersonUuid}, db, t, assert)
 
 	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
 	storedFullPerson, _, err := peopleDriver.Read(fullPersonUuid)
@@ -122,7 +131,8 @@ func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 	assert := assert.New(t)
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{uniquePersonUuid}, db, t, assert)
 	personToWrite := person{UUID: uniquePersonUuid, Name: "Test", BirthYear: 1974, Salutation: "Mr", AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: "FACTSET_ID", UUIDS: []string{uniquePersonUuid}}, Aliases: []string{"alias 1", "alias 2"}}
 
 	peopleDriver.Write(personToWrite)
@@ -151,7 +161,9 @@ func TestAddingPersonWithExistingIdentifiersShouldFail(t *testing.T) {
 
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	cypherDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{minimalPersonUuid, fullPersonUuid}, db, t, assert)
+
 	assert.NoError(cypherDriver.Write(fullPerson))
 	err := cypherDriver.Write(minimalPerson)
 	assert.Error(err)
@@ -162,7 +174,8 @@ func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
 	assert := assert.New(t)
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{fullPersonUuid}, db, t, assert)
 
 	storedPerson := peopleDriver.Write(fullPerson)
 
@@ -187,11 +200,12 @@ func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
 	assert.Equal(fullPerson.PrefLabel, result[0].PrefLabel, "PrefLabel should be 'Pref Label")
 }
 
-func TestDelete(t *testing.T) {
+func TestDeleteWillDeleteEntireNodeIfNoRelationship(t *testing.T) {
 	assert := assert.New(t)
 	db := getDatabaseConnectionAndCheckClean(t, assert)
 	peopleDriver := getCypherDriver(db)
-	defer cleanDB(db, t, assert)
+
+	defer cleanDB([]string{minimalPersonUuid}, db, t, assert)
 
 	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
 
@@ -204,6 +218,31 @@ func TestDelete(t *testing.T) {
 	assert.Equal(person{}, p, "Found person %s who should have been deleted", p)
 	assert.False(found, "Found person for uuid %s who should have been deleted", minimalPersonUuid)
 	assert.NoError(err, "Error trying to find person for uuid %s", minimalPersonUuid)
+	assert.Equal(false, doesThingExistAtAll(minimalPersonUuid, db, t, assert), "Found thing who should have been deleted uuid: %s", minimalPersonUuid)
+}
+
+func TestDeleteWithRelationshipsMaintainsRelationships(t *testing.T) {
+	assert := assert.New(t)
+	db := getDatabaseConnectionAndCheckClean(t, assert)
+	peopleDriver := getCypherDriver(db)
+
+	defer cleanDB([]string{fullPersonUuid, contentUUID}, db, t, assert)
+
+	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
+	writeContent(assert, db)
+	writeAnnotation(assert, db)
+
+	found, err := peopleDriver.Delete(fullPersonUuid)
+
+	assert.True(found, "Didn't manage to delete person for uuid %", fullPersonUuid)
+	assert.NoError(err, "Error deleting person for uuid %s", fullPersonUuid)
+
+	p, found, err := peopleDriver.Read(fullPersonUuid)
+
+	assert.Equal(person{}, p, "Found person %s who should have been deleted", p)
+	assert.False(found, "Found person for uuid %s who should have been deleted", fullPersonUuid)
+	assert.NoError(err, "Error trying to find person for uuid %s", fullPersonUuid)
+	assert.Equal(true, doesThingExistWithIdentifiers(fullPersonUuid, db, t, assert), "Unable to find a Thing with any Identifiers, uuid: %s", fullPersonUuid)
 }
 
 func TestIDs(t *testing.T) {
@@ -272,6 +311,40 @@ func TestIDs(t *testing.T) {
 
 }
 
+func writeAnnotation(assert *assert.Assertions, db neoutils.NeoConnection) annotations.Service {
+	annotationsRW := annotations.NewCypherAnnotationsService(db, "v2")
+	assert.NoError(annotationsRW.Initialise())
+	writeJSONToAnnotationsService(annotationsRW, contentUUID, "./fixtures/Annotations-3fc9fe3e-af8c-4f7f-961a-e5065392bb31-v2.json", assert)
+	return annotationsRW
+}
+
+func writeContent(assert *assert.Assertions, db neoutils.NeoConnection) baseftrwapp.Service {
+	contentRW := content.NewCypherContentService(db)
+	assert.NoError(contentRW.Initialise())
+	writeJSONToService(contentRW, "./fixtures/Content-3fc9fe3e-af8c-4f7f-961a-e5065392bb31.json", assert)
+	return contentRW
+}
+
+func writeJSONToAnnotationsService(service annotations.Service, contentUUID string, pathToJSONFile string, assert *assert.Assertions) {
+	f, err := os.Open(pathToJSONFile)
+	assert.NoError(err)
+	dec := json.NewDecoder(f)
+	inst, errr := service.DecodeJSON(dec)
+	assert.NoError(errr, "Error parsing file %s", pathToJSONFile)
+	errrr := service.Write(contentUUID, inst)
+	assert.NoError(errrr)
+}
+
+func writeJSONToService(service baseftrwapp.Service, pathToJSONFile string, assert *assert.Assertions) {
+	f, err := os.Open(pathToJSONFile)
+	assert.NoError(err)
+	dec := json.NewDecoder(f)
+	inst, _, errr := service.DecodeJSON(dec)
+	assert.NoError(errr)
+	errrr := service.Write(inst)
+	assert.NoError(errrr)
+}
+
 func readPeopleAndCompare(expected person, t *testing.T, db neoutils.NeoConnection) {
 	sort.Strings(expected.Types)
 	sort.Strings(expected.AlternativeIdentifiers.TME)
@@ -291,8 +364,7 @@ func readPeopleAndCompare(expected person, t *testing.T, db neoutils.NeoConnecti
 
 func getDatabaseConnectionAndCheckClean(t *testing.T, assert *assert.Assertions) neoutils.NeoConnection {
 	db := getDatabaseConnection(assert)
-	cleanDB(db, t, assert)
-	checkDbClean(db, t)
+	checkDbClean([]string{fullPersonUuid, contentUUID, minimalPersonUuid, fullPersonSecondUuid, fullPersonThirdUuid, uniquePersonUuid}, db, t)
 	return db
 }
 
@@ -309,36 +381,89 @@ func getDatabaseConnection(assert *assert.Assertions) neoutils.NeoConnection {
 	return db
 }
 
-func cleanDB(db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) {
-	qs := []*neoism.CypherQuery{
-		{
-			Statement: fmt.Sprintf("MATCH (mp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE mp, i", minimalPersonUuid),
-		},
-		{
-			Statement: fmt.Sprintf("MATCH (fp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE fp, i", fullPersonUuid),
-		},
-		{
-			Statement: fmt.Sprintf("MATCH (fp:Thing {uuid: '%v'})<-[:IDENTIFIES*0..]-(i:Identifier) DETACH DELETE fp, i", uniquePersonUuid),
-		},
+func cleanDB(uuidsToClean []string, db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) {
+	qs := make([]*neoism.CypherQuery, len(uuidsToClean))
+	for i, uuid := range uuidsToClean {
+		qs[i] = &neoism.CypherQuery{
+			Statement: fmt.Sprintf(`
+			MATCH (a:Thing {uuid: "%s"})
+			OPTIONAL MATCH (a)-[rel]-(i)
+			DELETE rel, i
+			DETACH DELETE a`, uuid)}
 	}
-
 	err := db.CypherBatch(qs)
 	assert.NoError(err)
 }
 
-func checkDbClean(db neoutils.NeoConnection, t *testing.T) {
-	assert := assert.New(t)
-
+func doesThingExistAtAll(uuid string, db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) bool {
 	result := []struct {
-		Uuid string `json:"org.uuid"`
+		Uuid string `json:"thing.uuid"`
 	}{}
 
 	checkGraph := neoism.CypherQuery{
 		Statement: `
-			MATCH (org:Thing) WHERE org.uuid in {uuids} RETURN org.uuid
+			MATCH (a:Thing {uuid: "%s"}) return a.uuid
 		`,
 		Parameters: neoism.Props{
-			"uuids": []string{fullPersonUuid, minimalPersonUuid, uniquePersonUuid},
+			"uuid": uuid,
+		},
+		Result: &result,
+	}
+
+	err := db.CypherBatch([]*neoism.CypherQuery{&checkGraph})
+	assert.NoError(err)
+
+	if len(result) == 0 {
+		return false
+	}
+
+	return true
+}
+
+func doesThingExistWithIdentifiers(uuid string, db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) bool {
+
+	result := []struct {
+		uuid string `json:"thing.uuid"`
+	}{}
+
+	checkGraph := neoism.CypherQuery{
+		Statement: `
+			MATCH (a:Thing {uuid: "%s"})-[:IDENTIFIES]-(:Identifier)
+			WITH collect(distinct a.uuid) as uuid
+			RETURN uuid
+		`,
+		Parameters: neoism.Props{
+			"uuid": uuid,
+		},
+		Result: &result,
+	}
+
+	fmt.Printf("Result: %v", len(result))
+	err := db.CypherBatch([]*neoism.CypherQuery{&checkGraph})
+	assert.NoError(err)
+	fmt.Printf("Result2: %v", result)
+
+	if len(result) == 0 {
+		return false
+	}
+
+	fmt.Printf("Result3: %v", len(result))
+	return true
+}
+
+func checkDbClean(uuidsCleaned []string, db neoutils.NeoConnection, t *testing.T) {
+	assert := assert.New(t)
+
+	result := []struct {
+		Uuid string `json:"thing.uuid"`
+	}{}
+
+	checkGraph := neoism.CypherQuery{
+		Statement: `
+			MATCH (thing) WHERE thing.uuid in {uuids} RETURN thing.uuid
+		`,
+		Parameters: neoism.Props{
+			"uuids": uuidsCleaned,
 		},
 		Result: &result,
 	}
