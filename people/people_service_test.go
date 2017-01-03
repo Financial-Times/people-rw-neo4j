@@ -345,6 +345,59 @@ func writeJSONToService(service baseftrwapp.Service, pathToJSONFile string, asse
 	assert.NoError(errrr)
 }
 
+func doesThingExistAtAll(uuid string, db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) bool {
+	result := []struct {
+		Uuid string `json:"thing.uuid"`
+	}{}
+
+	checkGraph := neoism.CypherQuery{
+		Statement: `
+			MATCH (a:Thing {uuid: "%s"}) return a.uuid
+		`,
+		Parameters: neoism.Props{
+			"uuid": uuid,
+		},
+		Result: &result,
+	}
+
+	err := db.CypherBatch([]*neoism.CypherQuery{&checkGraph})
+	assert.NoError(err)
+
+	if len(result) == 0 {
+		return false
+	}
+
+	return true
+}
+
+func doesThingExistWithIdentifiers(uuid string, db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) bool {
+
+	result := []struct {
+		uuid string `json:"thing.uuid"`
+	}{}
+
+	checkGraph := neoism.CypherQuery{
+		Statement: `
+			MATCH (a:Thing {uuid: "%s"})-[:IDENTIFIES]-(:Identifier)
+			WITH collect(distinct a.uuid) as uuid
+			RETURN uuid
+		`,
+		Parameters: neoism.Props{
+			"uuid": uuid,
+		},
+		Result: &result,
+	}
+
+	err := db.CypherBatch([]*neoism.CypherQuery{&checkGraph})
+	assert.NoError(err)
+
+	if len(result) == 0 {
+		return false
+	}
+
+	return true
+}
+
 func readPeopleAndCompare(expected person, t *testing.T, db neoutils.NeoConnection) {
 	sort.Strings(expected.Types)
 	sort.Strings(expected.AlternativeIdentifiers.TME)
@@ -393,62 +446,6 @@ func cleanDB(uuidsToClean []string, db neoutils.NeoConnection, t *testing.T, ass
 	}
 	err := db.CypherBatch(qs)
 	assert.NoError(err)
-}
-
-func doesThingExistAtAll(uuid string, db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) bool {
-	result := []struct {
-		Uuid string `json:"thing.uuid"`
-	}{}
-
-	checkGraph := neoism.CypherQuery{
-		Statement: `
-			MATCH (a:Thing {uuid: "%s"}) return a.uuid
-		`,
-		Parameters: neoism.Props{
-			"uuid": uuid,
-		},
-		Result: &result,
-	}
-
-	err := db.CypherBatch([]*neoism.CypherQuery{&checkGraph})
-	assert.NoError(err)
-
-	if len(result) == 0 {
-		return false
-	}
-
-	return true
-}
-
-func doesThingExistWithIdentifiers(uuid string, db neoutils.NeoConnection, t *testing.T, assert *assert.Assertions) bool {
-
-	result := []struct {
-		uuid string `json:"thing.uuid"`
-	}{}
-
-	checkGraph := neoism.CypherQuery{
-		Statement: `
-			MATCH (a:Thing {uuid: "%s"})-[:IDENTIFIES]-(:Identifier)
-			WITH collect(distinct a.uuid) as uuid
-			RETURN uuid
-		`,
-		Parameters: neoism.Props{
-			"uuid": uuid,
-		},
-		Result: &result,
-	}
-
-	fmt.Printf("Result: %v", len(result))
-	err := db.CypherBatch([]*neoism.CypherQuery{&checkGraph})
-	assert.NoError(err)
-	fmt.Printf("Result2: %v", result)
-
-	if len(result) == 0 {
-		return false
-	}
-
-	fmt.Printf("Result3: %v", len(result))
-	return true
 }
 
 func checkDbClean(uuidsCleaned []string, db neoutils.NeoConnection, t *testing.T) {
