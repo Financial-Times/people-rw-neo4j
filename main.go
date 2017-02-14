@@ -86,7 +86,7 @@ func main() {
 			Port:          *port,
 			ServiceName:   "people-rw-neo4j",
 			Env:           *env,
-			EnableReqLog:  false,
+			EnableReqLog:  true,
 		})
 	}
 
