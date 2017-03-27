@@ -1,2 +1,3 @@
-people-rw-neo4j*
+people-rw-neo4j
 .idea
+!helm/people-rw-neo4j
