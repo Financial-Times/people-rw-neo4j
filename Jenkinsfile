@@ -7,7 +7,7 @@ node('docker') {
   stage 'build-image'
   imgFullName = BASE_IMAGE_ID + getFeatureName(env.BRANCH_NAME)
   docker.build(imgFullName, ".")
-  docker.withRegwithRegistry("https://hub.docker.com/", 'ft.dh.credentials') {
+  docker.withRegistry("https://hub.docker.com/", 'ft.dh.credentials') {
     docker.push(imgFullName)
   }
 
