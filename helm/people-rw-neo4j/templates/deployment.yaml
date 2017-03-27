@@ -1,25 +1,26 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: people-rw-neo4j-red
+  name: {{ .Values.service.name }}
   labels:
-    app: people-rw-neo4j-red
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     visualize: "true"
+    app: {{ .Values.service.name }}
 spec:
-  replicas: 2
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: people-rw-neo4j-red
+      app: {{ .Values.service.name }}
   template:
     metadata:
       labels:
-        app: people-rw-neo4j-red
+        app: {{ .Values.service.name }}
         visualize: "true"
     spec:
       containers:
-      - name: people-rw-neo4j-red
-        image: coco/people-rw-neo4j:v0.1.7
-        imagePullPolicy: Always
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.version }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         resources:
           limits:
             memory: 256Mi
@@ -27,22 +28,13 @@ spec:
         - name: APP_PORT
           value: "8080"
         - name: GRAPHITE_ADDRESS
-          valueFrom:
-            configMapKeyRef:
-              name: global-config
-              key: graphite.address
+          value: {{ .Values.people-rw-neo4j-red.graphite_address }}
         - name: GRAPHITE_PREFIX
-          value: "coco.services.k8s.people-rw-neo4j-red"
+          value: {{ .Values.people-rw-neo4j-red.graphite_prefix }}
         - name: BATCH_SIZE
-          valueFrom:
-            configMapKeyRef:
-              name: global-config
-              key: neo4j.statements.batch.size
+          value: {{ .Values.people-rw-neo4j-red.batch_size }}
         - name: NEO_URL
-          valueFrom:
-            configMapKeyRef:
-              name: global-config
-              key: neo4j.url
+          value: {{ .Values.people-rw-neo4j-red.neo_url }}
         ports:
         - containerPort: 8080
         livenessProbe:

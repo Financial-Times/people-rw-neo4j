@@ -3,22 +3,17 @@
 # Declare variables to be passed into your templates.
 replicaCount: 2
 image:
-  repository: up-registry.ft.com/coco/ingester-k8s
-  version: v5
+  repository: coco/people-rw-neo4j
+  version: v0.1.7
   pullPolicy: Always
-ingester:
-  kafka_groupname: "content"
-  kafka_system_id: "ContentIngester"
-  kafka_topic_name: "CmsPublicationEvents"
-  whitelist: "^http://(methode|wordpress|brightcove)(-article|-image-model|-list|-image|-video-model|-content-placeholder)?(-internal-components)?(-transformer|-mapper)(-pr|-iw)?(-uk-.*)?\\.svc\\.ft\\.com(:\\d{2,5})?/(content|image/model|image-set/model|lists|video/model|internalcomponents)/[\\w-]+.*$"
-  writer_name: "DocumentStore"
-  writer_healthcheck_name: "Can connect to the Document Store"
-  writer_healthcheck_tech_summary: "Tests that the build-info endpoint for the Document Store returns a 200 response"
-  message_forwarding_enabled: "true"
-  forward_to_topic_name: "PostPublicationEvents"
-  writer_url: "document-store-api:8080"
+people-rw-neo4j:
+  graphite_address: "graphite.ft.com"
+  graphite_prefix: "coco.services.k8s.people-rw-neo4j-red"
+  batch_size: "10"
+  neo_url: "http://neo4j:7474/db/data"
+ 
 service:
-  name: ingester
+  name: people-rw-neo4j
   hasHealthcheck: "true"
 resources:
   limits:
