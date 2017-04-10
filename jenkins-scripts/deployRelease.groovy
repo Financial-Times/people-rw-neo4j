@@ -15,7 +15,7 @@ node {
     stage 'build-image'
     DOCKER_TAG = "coco/${APP_NAME}:${GIT_TAG}"
     echo "Building image $DOCKER_TAG"
-    docker.build("coco/${APP_NAME}:pipeline${GIT_TAG}", ".")
+    // docker.build("coco/${APP_NAME}:pipeline${GIT_TAG}", ".")
 
     stage 'push-image'
     echo "TODO Push the image to dockerhub"
@@ -26,7 +26,8 @@ node {
     stage 'deploy-to-pre-prod'
     String currentDir = pwd()
     docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
-      sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
+      sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{$.items[0].spec.containers[*].image}'"
+      //sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
     }
 
     stage 'Validate in PRE-PROD'
@@ -40,7 +41,7 @@ node {
 
     stage 'deploy-to-prod'
     docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
-      sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
+      //sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
     }
 
     stage 'Validate in PROD'
