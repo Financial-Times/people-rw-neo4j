@@ -4,15 +4,13 @@ node('docker') {
   stage 'checkout'
   checkout scm
 
-  stage 'build-image'
-
+  stage 'build image'
   String imgFullName = BASE_IMAGE_ID + getFeatureName(env.BRANCH_NAME)
-  docker.build(imgFullName, ".")
+  def image = docker.build(imgFullName, ".")
 
-
-  docker.withRegistry("https://docker.io/", 'ft.dh.credentials') {
-    /* TODO : fix the image pushing to dockerhub */
-    docker.image(imgFullName).push()
+  stage 'push image'
+  docker.withRegistry("", 'ft.dh.credentials') {
+    image.push()
   }
 
   deleteDir()
