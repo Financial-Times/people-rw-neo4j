@@ -1,5 +1,5 @@
 CREDENTIALS_DIR="credentials"
-DOCKER_IMAGE_ID="davidbalazs/k8s-aws-utility:v0.0.2"
+DOCKER_IMAGE_ID="coco/k8s-cli-utils:latest"
 APP_NAME='people-rw-neo4j'
 
 node {
@@ -26,7 +26,7 @@ node {
     stage 'deploy-to-pre-prod'
     String currentDir = pwd()
     docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
-      sh "kubectl set image deployments/${APP_NAME}-red ${APP_NAME}-red=\"coco/${APP_NAME}:v0.1.8\""
+      sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
     }
 
     stage 'Validate in PRE-PROD'
@@ -45,9 +45,8 @@ node {
 
     stage 'Validate in PROD'
     input message: 'Check the app in PROD', ok: 'App is OK in PROD'
-
-    deleteDir()
   }
+  deleteDir() 
 }
 
 public prepareCredentials() {
@@ -56,7 +55,7 @@ public prepareCredentials() {
       [$class: 'FileBinding', credentialsId: 'ft.k8s.ca-cert', variable: 'CA_CERT'],
       [$class: 'FileBinding', credentialsId: 'ft.k8s.client-key', variable: 'CLIENT_KEY']]) {
     sh """
-      mkdir ${CREDENTIALS_DIR}
+      mkdir -p ${CREDENTIALS_DIR}
       cp ${env.CLIENT_CERT} ${CREDENTIALS_DIR}/
       cp ${env.CLIENT_KEY} ${CREDENTIALS_DIR}/
       cp ${env.CA_CERT} ${CREDENTIALS_DIR}/
