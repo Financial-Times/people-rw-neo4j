@@ -40,7 +40,7 @@ node {
 
     stage 'deploy-to-prod'
     docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
-      sh "kubectl set image deployments/${APP_NAME}-red ${APP_NAME}-red=\"coco/${APP_NAME}:v${GIT_TAG}\""
+      sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
     }
 
     stage 'Validate in PROD'
