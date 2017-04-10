@@ -28,7 +28,13 @@ node {
 
         stage 'Open CR for PRE-PROD'
         echo "Opening CR for deployment to PRE-PROD."
-        echo "TODO open CR for PRE-PROD"
+        String gitTempFile = "tagDescription.txt"
+        sh "git show ${GIT_TAG}  > ${gitTempFile}"
+        String fileText = readFile(gitTempFile)
+        string authorEmailAddress = getAuthorEmailAddress(fileText)
+        string summaryOfChange = getSummaryOfChange(fileText)
+        callJenkinsJobForOpeningCR(authorEmailAddress, summaryOfChange, "PRE-PROD")
+
 
         stage 'deploy-to-pre-prod'
         String currentDir = pwd()
@@ -44,7 +50,7 @@ node {
 
         stage 'Close CR for PRE-PROD'
         echo "Closing CR for deployment to PRE-PROD."
-        echo "TODO close CR for PRE-PROD"
+        callJenkinsJobForClosingCR(authorEmailAddress, summaryOfChange, "PRE-PROD","CR1234")
 
         stage 'Validate in PRE-PROD'
         echo "Starting manual validation in PRE-PROD"
@@ -57,7 +63,7 @@ node {
 
         stage 'Open CR for PROD'
         echo "Opening CR for deployment to PRE-PROD."
-        echo "TODO CR for PROD"
+        callJenkinsJobForOpeningCR(authorEmailAddress, summaryOfChange, "PROD")
 
         stage 'deploy-to-prod'
         docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
@@ -72,7 +78,7 @@ node {
 
         stage 'Close CR for PROD'
         echo "Closing CR for deployment to PRE-PROD."
-        echo "TODO CR for PROD"
+        callJenkinsJobForClosingCR(authorEmailAddress, summaryOfChange, "PROD","CR1234")
 
         stage 'Validate in PROD'
         echo "Starting manual validation in PROD"
@@ -95,4 +101,28 @@ public prepareCredentials() {
       cp ${env.CA_CERT} ${CREDENTIALS_DIR}/
     """
     }
+}
+
+@NonCPS public String getAuthorEmailAddress(String fileText) {
+  return (fileText =~ /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,4}/)[0]
+}
+
+@NonCPS public String getSummaryOfChange(String fileText) {
+  String description = ""
+  fileText.eachLine { line ->
+    if (!(line =~ /Author:/) && !(line =~ /Date:/)  && !(line =~ /Merge:/) && line!="") {
+      description = description+line
+    }
+  }
+
+  return description
+}
+
+public callJenkinsJobForOpeningCR(String emailAddress, String summaryOfChange, String envName) {
+  echo "Calling jenkins job for opening CR with params: email: [${emailAddress}] summary: [${summaryOfChange}] environment: [${envName}]"
+
+}
+
+public callJenkinsJobForClosingCR(String emailAddress, String summaryOfChange, String envName,String id) {
+  echo "Calling jenkins job for closing CR with params: email: [${emailAddress}] summary: [${summaryOfChange}] environment: [${envName}] and id: [${id}]"
 }
