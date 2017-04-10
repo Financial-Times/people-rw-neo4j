@@ -18,11 +18,13 @@ node {
         stage 'build-image'
         DOCKER_TAG = "coco/${APP_NAME}:${GIT_TAG}"
         echo "Building image $DOCKER_TAG"
-        docker.build("coco/${APP_NAME}:pipeline${GIT_TAG}", ".")
+        def dockerImg = docker.build("coco/${APP_NAME}:pipeline${GIT_TAG}", ".")
 
         stage 'push-image'
         echo "Pushing image ${DOCKER_TAG} to dockerhub"
-        echo "TODO Push the image to dockerhub"
+        docker.withRegistry("", 'ft.dh.credentials') {
+          dockerImg.push()
+        }
 
         stage 'Open CR for PRE-PROD'
         echo "Opening CR for deployment to PRE-PROD."
