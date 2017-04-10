@@ -1,5 +1,5 @@
 CREDENTIALS_DIR="credentials"
-DOCKER_IMAGE_ID="davidbalazs/k8s-aws-utility:v0.0.2"
+DOCKER_IMAGE_ID="coco/k8s-cli-utils"
 
 node('docker') {
   catchError {
