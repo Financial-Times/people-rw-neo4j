@@ -28,13 +28,13 @@ spec:
         - name: APP_PORT
           value: "8080"
         - name: GRAPHITE_ADDRESS
-          value: {{ .Values.people-rw-neo4j-red.graphite_address }}
+          value: {{ .Values.people_rw_neo4j.graphite_address }}
         - name: GRAPHITE_PREFIX
-          value: {{ .Values.people-rw-neo4j-red.graphite_prefix }}
+          value: {{ .Values.people_rw_neo4j.graphite_prefix }}
         - name: BATCH_SIZE
-          value: {{ .Values.people-rw-neo4j-red.batch_size }}
+          value: "{{ .Values.people_rw_neo4j.batch_size }}"
         - name: NEO_URL
-          value: {{ .Values.people-rw-neo4j-red.neo_url }}
+          value: "{{ .Values.people_rw_neo4j.neo_url }}"
         ports:
         - containerPort: 8080
         livenessProbe:
