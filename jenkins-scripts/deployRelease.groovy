@@ -26,7 +26,7 @@ node {
     stage 'deploy-to-pre-prod'
     String currentDir = pwd()
     docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
-      sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{$.items[0].spec.containers[*].image}'"
+      sh "kubectl get pods --selector=app=topics-rw-neo4j -o jsonpath='{$.items[0].spec.containers[*].image}'"
       //sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
     }
 
