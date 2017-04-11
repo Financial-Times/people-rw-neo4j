@@ -1,9 +1,6 @@
 CREDENTIALS_DIR = "credentials"
-SLACK_HOOK = "foobar"
 DOCKER_IMAGE_ID = "coco/k8s-cli-utils:latest"
 APP_NAME = 'people-rw-neo4j'
-PRE_PROD_ENV = "foo-pre-prod"
-PROD_ENV = "foo-prod"
 
 node {
     catchError {
@@ -42,7 +39,7 @@ node {
             sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
             echo "pre-prod old version: " + readFile("image-version")
 
-            sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
+            sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:pipeline${GIT_TAG}\""
 
             sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
             echo "pre-prod new version: " + readFile("image-version")
@@ -54,11 +51,18 @@ node {
 
         stage 'Validate in PRE-PROD'
         echo "Starting manual validation in PRE-PROD"
-        sh "curl -X POST --data-urlencode 'payload={\"username\": \"Jenkins\", \"text\": \"Manual action needed: <${env.BUILD_URL}input|click here to validate deployment to PRE-PROD>\", \"icon_emoji\": \":k8s:\"}' ${SLACK_HOOK}"
-        input message: "Check the app in pre-prod: https://$PRE_PROD_ENV/__health/__pods-health?service-name=${APP_NAME}", ok: 'App is OK in PRE-PROD'
+        withCredentials([[$class: 'StringBinding', credentialsId: 'ft.slack.hook', variable: 'SLACK_HOOK']]) {
+            sh "curl -X POST --data-urlencode 'payload={\"username\": \"${APP_NAME} ${GIT_TAG} release\", \"text\": \"Manual action: <${env.BUILD_URL}input|click here to validate deployment to PRE-PROD>\", \"icon_emoji\": \":k8s:\"}' ${env.SLACK_HOOK}"
+        }
+
+        withCredentials([[$class: 'StringBinding', credentialsId: 'ft.k8s.preprod_env', variable: 'PRE_PROD_ENV']]) {
+            input message: "Check the app in pre-prod: ${env.PRE_PROD_ENV}/__health/__pods-health?service-name=${APP_NAME}", ok: 'App is OK in PRE-PROD'
+        }
 
         stage 'Deploy to PROD'
-        echo "TODO slack or email integration fro deployment to PROD"
+        withCredentials([[$class: 'StringBinding', credentialsId: 'ft.slack.hook', variable: 'SLACK_HOOK']]) {
+            sh "curl -X POST --data-urlencode 'payload={\"username\": \"${APP_NAME} ${GIT_TAG} release\", \"text\": \"Manual action: <${env.BUILD_URL}input|click here to deploy to PROD>\", \"icon_emoji\": \":k8s:\"}' ${env.SLACK_HOOK}"
+        }
         input message: 'Press the button to deploy to prod', ok: 'Deploy to PROD'
 
         stage 'Open CR for PROD'
@@ -70,7 +74,7 @@ node {
             sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
             echo "prod old version: " + readFile("image-version")
 
-            sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
+            sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:pipeline${GIT_TAG}\""
 
             sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
             echo "prod new version: " + readFile("image-version")
@@ -82,8 +86,12 @@ node {
 
         stage 'Validate in PROD'
         echo "Starting manual validation in PROD"
-        echo "TODO slack or email integration for deployment to PROD"
-        input message: "Check the app in PROD https://${PROD_ENV}/__health/__pods-health?service-name=${APP_NAME}", ok: 'App is OK in PROD'
+        withCredentials([[$class: 'StringBinding', credentialsId: 'ft.slack.hook', variable: 'SLACK_HOOK']]) {
+            sh "curl -X POST --data-urlencode 'payload={\"username\": \"${APP_NAME} ${GIT_TAG} release\", \"text\": \"Manual action: <${env.BUILD_URL}input|click here to validate deployment to PROD>\", \"icon_emoji\": \":k8s:\"}' ${env.SLACK_HOOK}"
+        }
+        withCredentials([[$class: 'StringBinding', credentialsId: 'ft.k8s.prod_env', variable: 'PROD_ENV']]) {
+            input message: "Check the app in PROD ${env.PROD_ENV}/__health/__pods-health?service-name=${APP_NAME}", ok: 'App is OK in PROD'
+        }
     }
 
     deleteDir()
