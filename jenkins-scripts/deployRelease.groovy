@@ -35,6 +35,7 @@ node {
 
         stage 'deploy-to-pre-prod'
         String currentDir = pwd()
+        docker.image(DOCKER_IMAGE_ID).pull()
         docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
             sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
             echo "pre-prod old version: " + readFile("image-version")
