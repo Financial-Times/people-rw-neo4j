@@ -39,12 +39,12 @@ node {
         stage 'deploy-to-pre-prod'
         String currentDir = pwd()
         docker.image(DOCKER_IMAGE_ID).inside("-v ${currentDir}/${CREDENTIALS_DIR}:/${CREDENTIALS_DIR}") {
-            sh "kubectl get pods --selector=app=topics-rw-neo4j -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
+            sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
             echo "pre-prod old version: " + readFile("image-version")
 
             sh "kubectl set image deployments/${APP_NAME} ${APP_NAME}=\"coco/${APP_NAME}:v${GIT_TAG}\""
 
-            sh "kubectl get pods --selector=app=topics-rw-neo4j -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
+            sh "kubectl get pods --selector=app=${APP_NAME} -o jsonpath='{\$.items[0].spec.containers[*].image}' > image-version"
             echo "pre-prod new version: " + readFile("image-version")
         }
 
@@ -83,7 +83,7 @@ node {
         stage 'Validate in PROD'
         echo "Starting manual validation in PROD"
         echo "TODO slack or email integration for deployment to PROD"
-        input message: 'Check the app in PROD https://${PROD_ENV}/__health/__pods-health?service-name=${APP_NAME}', ok: 'App is OK in PROD'
+        input message: "Check the app in PROD https://${PROD_ENV}/__health/__pods-health?service-name=${APP_NAME}", ok: 'App is OK in PROD'
     }
 
     deleteDir()
