@@ -21,20 +21,26 @@ spec:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.version }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        resources:
-          limits:
-            memory: 256Mi
         env:
         - name: APP_PORT
           value: "8080"
         - name: GRAPHITE_ADDRESS
-          value: {{ .Values.people_rw_neo4j.graphite_address }}
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: graphite.address
         - name: GRAPHITE_PREFIX
           value: {{ .Values.people_rw_neo4j.graphite_prefix }}
         - name: BATCH_SIZE
-          value: "{{ .Values.people_rw_neo4j.batch_size }}"
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: neo4j.statements.batch.size
         - name: NEO_URL
-          value: "{{ .Values.people_rw_neo4j.neo_url }}"
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: neo4j.read.write.url
         ports:
         - containerPort: 8080
         livenessProbe:
@@ -47,5 +53,6 @@ spec:
             port: 8080
           initialDelaySeconds: 15
           periodSeconds: 30
-
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
 

@@ -4,18 +4,14 @@
 replicaCount: 2
 image:
   repository: coco/people-rw-neo4j
-  version: v0.1.7
+  version: latest
   pullPolicy: Always
 people_rw_neo4j:
-  graphite_address: "graphite.ft.com"
   graphite_prefix: "coco.services.k8s.people-rw-neo4j-red"
-  batch_size: "10"
-  neo_url: "http://neo4j-red:7474/db/data/"
- 
 service:
   name: people-rw-neo4j
   hasHealthcheck: "true"
 resources:
   limits:
-    memory: 1Gi
+    memory: 256Mi
 
