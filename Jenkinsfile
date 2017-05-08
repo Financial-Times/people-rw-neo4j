@@ -1,1 +1,1 @@
-devBuildAndDeploy(this, "coco/people-rw-neo4j")
+devBuildAndDeploy("coco/people-rw-neo4j")
