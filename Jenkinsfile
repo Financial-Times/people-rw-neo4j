@@ -24,16 +24,20 @@ node('docker') {
     //  todo [sb] handle the case when the environment is not specified in the branch name
 
     stage("deploy to team env") {
-      runWithK8SCliTools(env) {
-        def chartName = getHelmChartFolderName()
-
-        /*  using the chart name also as release name.. we have one release per app */
-        sh "helm upgrade ${chartName} ${HELM_CONFIG_FOLDER}/${chartName} -i --set image.version=${imageVersion}"
-      }
+      deployAppWithHelm(imageVersion, env)
     }
   }
 
   deleteDir()
+}
+
+public deployAppWithHelm(String imageVersion, String env) {
+  runWithK8SCliTools(env) {
+    def chartName = getHelmChartFolderName()
+    /*  todo [sb] handle the case when the chart is used by more than 1 app */
+    /*  using the chart name also as release name.. we have one release per app */
+    sh "helm upgrade ${chartName} ${HELM_CONFIG_FOLDER}/${chartName} -i --set image.version=${imageVersion}"
+  }
 }
 
 /**
