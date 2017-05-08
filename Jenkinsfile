@@ -1,4 +1,5 @@
-BASE_IMAGE_ID = "coco/people-rw-neo4j:"
+devBuildAndDeploy(this, "coco/people-rw-neo4j")
+
 CREDENTIALS_DIR = "credentials"
 DOCKER_IMAGE_ID = "coco/k8s-cli-utils:update-helm"
 
