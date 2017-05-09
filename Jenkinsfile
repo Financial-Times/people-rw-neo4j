@@ -1,6 +1,6 @@
 import com.ft.up.DevBuildConfig
 
-devBuildAndDeploy(new DevBuildConfig(
-    [appDockerImageId: "coco/people-rw-neo4j"]
-))
+DevBuildConfig config = new DevBuildConfig()
+config.appDockerImageId = "coco/people-rw-neo4j"
 
+devBuildAndDeploy(config)
