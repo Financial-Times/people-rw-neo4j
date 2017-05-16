@@ -1,3 +1,5 @@
+@Library('k8s-pipeline-lib@first-version') _
+
 import com.ft.up.DevBuildConfig
 
 DevBuildConfig config = new DevBuildConfig()
