@@ -1,16 +1,16 @@
-# Default values for ingester.
+# Default values for people-rw-neo4j.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+service:
+  name: "" # The name of the service, should be defined in the specific app-configs folder.
+  hasHealthcheck: "true"
 replicaCount: 2
 image:
   repository: coco/people-rw-neo4j
-  version: latest
+  version: "" # should be set explicitly at installation
   pullPolicy: Always
 people_rw_neo4j:
-  graphite_prefix: "coco.services.k8s.people-rw-neo4j-red"
-service:
-  name: people-rw-neo4j
-  hasHealthcheck: "true"
+  graphite_prefix: "coco.services.k8s.people-rw-neo4j" # the prefix used for logging in graphite
 resources:
   limits:
     memory: 256Mi
