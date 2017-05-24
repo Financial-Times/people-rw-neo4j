@@ -1,9 +1,9 @@
-@Library('k8s-pipeline-lib@first-version') _
+@Library('k8s-pipeline-lib') _
 
 import com.ft.up.BuildConfig
+import com.ft.up.Cluster
 
 BuildConfig config = new BuildConfig()
-config.appDockerImageId = "coco/people-rw-neo4j"
-config.useInternalDockerReg = false
+config.deployToClusters = [Cluster.DELIVERY]
 
 entryPointForReleaseAndDev(config)
