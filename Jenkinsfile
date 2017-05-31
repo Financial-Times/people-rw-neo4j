@@ -7,3 +7,4 @@ BuildConfig config = new BuildConfig()
 config.deployToClusters = [Cluster.DELIVERY]
 
 entryPointForReleaseAndDev(config)
+/* test*/
