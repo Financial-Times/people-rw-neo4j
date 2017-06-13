@@ -1,7 +1,6 @@
 machine:
   services:
     - docker
-  machine:
   environment:
     PROJECT_GOPATH: "${HOME}/.go_project"
     PROJECT_PARENT_PATH: "${PROJECT_GOPATH}/src/github.com/${CIRCLE_PROJECT_USERNAME}"
