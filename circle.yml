@@ -13,7 +13,6 @@ checkout:
     - mkdir -p "${PROJECT_PARENT_PATH}"
     - ln -sf "${HOME}/${CIRCLE_PROJECT_REPONAME}/" "${PROJECT_PATH}"
 	
-dependencies:
 test:
   pre:
     - docker info; docker run -d -e "NEO4J_AUTH=none" -e "NEO4J_HEAP_MEMORY=256" -e "NEO4J_CACHE_MEMORY=256M" -p 7474:7474 -p 7473:7473 neo4j:$NEO4J_VERSION
