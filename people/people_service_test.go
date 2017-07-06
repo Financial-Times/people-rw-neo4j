@@ -312,7 +312,7 @@ func TestIDs(t *testing.T) {
 }
 
 func writeAnnotation(assert *assert.Assertions, db neoutils.NeoConnection) annotations.Service {
-	annotationsRW := annotations.NewCypherAnnotationsService(db, "v2")
+	annotationsRW := annotations.NewCypherAnnotationsService(db, "v2", "annotations-v2")
 	assert.NoError(annotationsRW.Initialise())
 	writeJSONToAnnotationsService(annotationsRW, contentUUID, "./fixtures/Annotations-3fc9fe3e-af8c-4f7f-961a-e5065392bb31-v2.json", assert)
 	return annotationsRW
