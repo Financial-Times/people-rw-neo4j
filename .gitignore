@@ -1,2 +1,6 @@
-people-rw-neo4j*
+*.iml
 .idea
+people-rw-neo4j*
+vendor/*/
+.project
+.vscode

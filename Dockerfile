@@ -1,4 +1,4 @@
-FROM alpine:3.4
+FROM alpine:3.5
 
 ARG PROJECT=people-rw-neo4j
 
@@ -24,10 +24,12 @@ RUN apk add --no-cache bash \
   && cd $GOPATH/src/${REPO_PATH} \
   && go get ./... \
   && cd $GOPATH/src/${REPO_PATH} \
-  && echo ${LDFLAGS} \
+  && go get -u github.com/kardianos/govendor \
+  && $GOPATH/bin/govendor sync \
   && go build -ldflags="${LDFLAGS}" \
   && mv ${PROJECT} / \
   && apk del .build-dependencies \
   && rm -rf $GOPATH /var/cache/apk/*
 
 CMD [ "/people-rw-neo4j" ]
+
