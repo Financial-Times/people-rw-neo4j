@@ -71,7 +71,7 @@ func TestCreateAllValuesPresent(t *testing.T) {
 
 	defer cleanDB([]string{fullPersonUuid}, db, t, assert)
 
-	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
+	assert.NoError(peopleDriver.Write(fullPerson, "TEST_TRANS_ID"), "Failed to write person")
 
 	readPeopleAndCompare(fullPerson, t, db)
 }
@@ -83,7 +83,7 @@ func TestCreateNotAllValuesPresent(t *testing.T) {
 
 	defer cleanDB([]string{minimalPersonUuid}, db, t, assert)
 
-	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
+	assert.NoError(peopleDriver.Write(minimalPerson, "TEST_TRANS_ID"), "Failed to write person")
 
 	readPeopleAndCompare(minimalPerson, t, db)
 }
@@ -97,7 +97,7 @@ func TestCreateHandlesSpecialCharacters(t *testing.T) {
 
 	personToWrite := person{UUID: uniquePersonUuid, Name: "Thomas M. O'Gara", BirthYear: 1974, Salutation: "Mr", AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: "FACTSET_ID", UUIDS: []string{uniquePersonUuid}, TME: []string{}}, Aliases: []string{"alias 1", "alias 2"}, Types: defaultTypes}
 
-	assert.NoError(peopleDriver.Write(personToWrite), "Failed to write person")
+	assert.NoError(peopleDriver.Write(personToWrite, "TEST_TRANS_ID"), "Failed to write person")
 
 	readPeopleAndCompare(personToWrite, t, db)
 }
@@ -109,8 +109,8 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 
 	defer cleanDB([]string{fullPersonUuid}, db, t, assert)
 
-	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
-	storedFullPerson, _, err := peopleDriver.Read(fullPersonUuid)
+	assert.NoError(peopleDriver.Write(fullPerson, "TEST_TRANS_ID"), "Failed to write person")
+	storedFullPerson, _, err := peopleDriver.Read(fullPersonUuid, "TEST_TRANS_ID")
 
 	assert.NoError(err)
 	assert.NotEmpty(storedFullPerson)
@@ -122,7 +122,7 @@ func TestUpdateWillRemovePropertiesNoLongerPresent(t *testing.T) {
 		Types: defaultTypes,
 	}
 
-	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write updated person")
+	assert.NoError(peopleDriver.Write(minimalPerson, "TEST_TRANS_ID"), "Failed to write updated person")
 
 	readPeopleAndCompare(minimalPerson, t, db)
 }
@@ -135,7 +135,7 @@ func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 	defer cleanDB([]string{uniquePersonUuid}, db, t, assert)
 	personToWrite := person{UUID: uniquePersonUuid, Name: "Test", BirthYear: 1974, Salutation: "Mr", AlternativeIdentifiers: alternativeIdentifiers{FactsetIdentifier: "FACTSET_ID", UUIDS: []string{uniquePersonUuid}}, Aliases: []string{"alias 1", "alias 2"}}
 
-	peopleDriver.Write(personToWrite)
+	peopleDriver.Write(personToWrite, "TEST_TRANS_ID")
 
 	result := []struct {
 		Aliases []string `json:"t.aliases"`
@@ -164,8 +164,8 @@ func TestAddingPersonWithExistingIdentifiersShouldFail(t *testing.T) {
 
 	defer cleanDB([]string{minimalPersonUuid, fullPersonUuid}, db, t, assert)
 
-	assert.NoError(cypherDriver.Write(fullPerson))
-	err := cypherDriver.Write(minimalPerson)
+	assert.NoError(cypherDriver.Write(fullPerson, "TEST_TRANS_ID"))
+	err := cypherDriver.Write(minimalPerson, "TEST_TRANS_ID")
 	assert.Error(err)
 	assert.IsType(rwapi.ConstraintOrTransactionError{}, err)
 }
@@ -177,7 +177,7 @@ func TestPrefLabelIsEqualToPrefLabelAndAbleToBeRead(t *testing.T) {
 
 	defer cleanDB([]string{fullPersonUuid}, db, t, assert)
 
-	storedPerson := peopleDriver.Write(fullPerson)
+	storedPerson := peopleDriver.Write(fullPerson, "TEST_TRANS_ID")
 
 	fmt.Printf("%v", storedPerson)
 
@@ -207,13 +207,13 @@ func TestDeleteWillDeleteEntireNodeIfNoRelationship(t *testing.T) {
 
 	defer cleanDB([]string{minimalPersonUuid}, db, t, assert)
 
-	assert.NoError(peopleDriver.Write(minimalPerson), "Failed to write person")
+	assert.NoError(peopleDriver.Write(minimalPerson, "TEST_TRANS_ID"), "Failed to write person")
 
-	found, err := peopleDriver.Delete(minimalPersonUuid)
+	found, err := peopleDriver.Delete(minimalPersonUuid, "TEST_TRANS_ID")
 	assert.True(found, "Didn't manage to delete person for uuid %", minimalPersonUuid)
 	assert.NoError(err, "Error deleting person for uuid %s", minimalPersonUuid)
 
-	p, found, err := peopleDriver.Read(minimalPersonUuid)
+	p, found, err := peopleDriver.Read(minimalPersonUuid, "TEST_TRANS_ID")
 
 	assert.Equal(person{}, p, "Found person %s who should have been deleted", p)
 	assert.False(found, "Found person for uuid %s who should have been deleted", minimalPersonUuid)
@@ -228,16 +228,16 @@ func TestDeleteWithRelationshipsMaintainsRelationships(t *testing.T) {
 
 	defer cleanDB([]string{fullPersonUuid, contentUUID}, db, t, assert)
 
-	assert.NoError(peopleDriver.Write(fullPerson), "Failed to write person")
+	assert.NoError(peopleDriver.Write(fullPerson, "TEST_TRANS_ID"), "Failed to write person")
 	writeContent(assert, db)
 	writeAnnotation(assert, db)
 
-	found, err := peopleDriver.Delete(fullPersonUuid)
+	found, err := peopleDriver.Delete(fullPersonUuid, "TEST_TRANS_ID")
 
 	assert.True(found, "Didn't manage to delete person for uuid %", fullPersonUuid)
 	assert.NoError(err, "Error deleting person for uuid %s", fullPersonUuid)
 
-	p, found, err := peopleDriver.Read(fullPersonUuid)
+	p, found, err := peopleDriver.Read(fullPersonUuid, "TEST_TRANS_ID")
 
 	assert.Equal(person{}, p, "Found person %s who should have been deleted", p)
 	assert.False(found, "Found person for uuid %s who should have been deleted", fullPersonUuid)
@@ -260,7 +260,7 @@ func TestIDs(t *testing.T) {
 			wg.Add(1)
 			go func(u string) {
 				defer wg.Done()
-				peopleDriver.Delete(u)
+				peopleDriver.Delete(u, "TEST_TRANS_ID")
 			}(u)
 		}
 		wg.Wait()
@@ -287,8 +287,7 @@ func TestIDs(t *testing.T) {
 						UUIDS:             []string{u},
 					},
 					Aliases: []string{fmt.Sprintf("alias for %d", i)},
-				},
-			)
+				}, "TEST_TRANS_ID")
 			assert.NoError(err)
 		}(i, u)
 	}
@@ -341,7 +340,7 @@ func writeJSONToService(service baseftrwapp.Service, pathToJSONFile string, asse
 	dec := json.NewDecoder(f)
 	inst, _, errr := service.DecodeJSON(dec)
 	assert.NoError(errr)
-	errrr := service.Write(inst)
+	errrr := service.Write(inst, "TEST_TRANS_ID")
 	assert.NoError(errrr)
 }
 
@@ -403,7 +402,7 @@ func readPeopleAndCompare(expected person, t *testing.T, db neoutils.NeoConnecti
 	sort.Strings(expected.AlternativeIdentifiers.TME)
 	sort.Strings(expected.AlternativeIdentifiers.UUIDS)
 
-	actual, found, err := getCypherDriver(db).Read(expected.UUID)
+	actual, found, err := getCypherDriver(db).Read(expected.UUID, "TEST_TRANS_ID")
 	assert.NoError(t, err)
 	assert.True(t, found)
 
