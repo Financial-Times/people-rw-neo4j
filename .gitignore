@@ -1,3 +1,6 @@
+people-rw-neo4j
+.idea
+!helm/people-rw-neo4j
 *.iml
 .idea
 people-rw-neo4j*

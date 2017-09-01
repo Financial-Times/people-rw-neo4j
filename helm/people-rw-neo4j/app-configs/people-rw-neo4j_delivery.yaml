@@ -1,0 +1,4 @@
+# Values used for the deployed application.
+replicaCount: 2
+service:
+  name: people-rw-neo4j
