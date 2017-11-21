@@ -137,9 +137,9 @@ func TestAliasesAreWrittenAndAreAbleToBeReadInOrder(t *testing.T) {
 
 	peopleDriver.Write(personToWrite, "TEST_TRANS_ID")
 
-	result := []struct {
+	var result []struct {
 		Aliases []string `json:"t.aliases"`
-	}{}
+	}
 
 	getPrefLabelQuery := &neoism.CypherQuery{
 		Statement: `
