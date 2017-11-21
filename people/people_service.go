@@ -58,7 +58,7 @@ func (s service) Read(uuid string, transactionId string) (interface{}, bool, err
 						p.birthYear as birthYear,
 						p.salutation as salutation,
 						p.aliases as aliases,
-						p.imageURL as _imageUrl,
+						p.imageUrl as _imageUrl,
 						labels(p) as types,
 						{uuids:collect(distinct upp.value),
 							TME:collect(distinct tme.value),
@@ -183,7 +183,7 @@ func (s service) Write(thing interface{}, transactionId string) error {
 	}
 
 	if p.ImageURL != "" {
-		params["imageURL"] = p.ImageURL
+		params["imageUrl"] = p.ImageURL
 	}
 
 	var aliases []string
