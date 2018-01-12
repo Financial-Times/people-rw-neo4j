@@ -11,6 +11,8 @@ image:
 people_rw_neo4j:
   graphite_prefix: "coco.services.k8s.people-rw-neo4j" # the prefix used for logging in graphite
 resources:
+  requests:
+    memory: 25Mi
   limits:
     memory: 256Mi
 
